@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: dolphin
+  datasource:
+    url: jdbc:postgresql://localhost:5432/dolphin
+    username: springuser
+    password: springpassword
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+      enabled: true
