@@ -15,35 +15,39 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ErrorResponse handleResourceNotFound(
+    public ResponseEntity<ErrorResponse> handleResourceNotFound(
             ResourceNotFoundException exception,
             HttpServletRequest request
     ) {
-        return new ErrorResponse(
-                OffsetDateTime.now(),
-                HttpStatus.NOT_FOUND.value(),
-                "RESOURCE_NOT_FOUND",
-                exception.getMessage(),
-                request.getRequestURI()
-        );
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(
+                        OffsetDateTime.now(),
+                        HttpStatus.NOT_FOUND.value(),
+                        "RESOURCE_NOT_FOUND",
+                        exception.getMessage(),
+                        request.getRequestURI()
+                ));
     }
 
     @ExceptionHandler(DuplicateResourceException.class)
-    public ErrorResponse handleDuplicateResource(
+    public ResponseEntity<ErrorResponse> handleDuplicateResource(
             DuplicateResourceException exception,
             HttpServletRequest request
     ) {
-        return new ErrorResponse(
-                OffsetDateTime.now(),
-                HttpStatus.CONFLICT.value(),
-                "DUPLICATE_RESOURCE",
-                exception.getMessage(),
-                request.getRequestURI()
-        );
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(
+                        OffsetDateTime.now(),
+                        HttpStatus.CONFLICT.value(),
+                        "DUPLICATE_RESOURCE",
+                        exception.getMessage(),
+                        request.getRequestURI()
+                ));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ErrorResponse handleValidation(
+    public ResponseEntity<ErrorResponse> handleValidation(
             MethodArgumentNotValidException exception,
             HttpServletRequest request
     ) {
@@ -56,13 +60,15 @@ public class GlobalExceptionHandler {
                 )
                 .collect(Collectors.joining(", "));
 
-        return new ErrorResponse(
-                OffsetDateTime.now(),
-                HttpStatus.BAD_REQUEST.value(),
-                "VALIDATION_ERROR",
-                message,
-                request.getRequestURI()
-        );
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(
+                        OffsetDateTime.now(),
+                        HttpStatus.BAD_REQUEST.value(),
+                        "VALIDATION_ERROR",
+                        message,
+                        request.getRequestURI()
+                ));
     }
 
     @ExceptionHandler(BusinessRuleViolationException.class)

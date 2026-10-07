@@ -1,4 +1,4 @@
-package com.school.dolphin.organization.entity;
+package com.school.dolphin.identity.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -7,37 +7,31 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(
-        name = "campus",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_campus_institution_code",
-                        columnNames = {"institution_id", "code"}
-                )
-        }
-)
+@Table(name = "user_account")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Campus {
+public class UserAccount {
 
     @Id
     private UUID id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "institution_id", nullable = false)
-    private Institution institution;
+    @Column(nullable = false, unique = true, length = 100)
+    private String username;
 
-    @Column(nullable = false, length = 50)
-    private String code;
+    @Column(nullable = false, unique = true, length = 255)
+    private String email;
 
-    @Column(nullable = false, length = 200)
-    private String name;
+    @Column(name = "password_hash", nullable = false, length = 255)
+    private String passwordHash;
 
-    @Column(columnDefinition = "TEXT")
-    private String address;
+    @Column(name = "first_name", nullable = false, length = 100)
+    private String firstName;
+
+    @Column(name = "last_name", length = 100)
+    private String lastName;
 
     @Column(nullable = false)
     private boolean active;
