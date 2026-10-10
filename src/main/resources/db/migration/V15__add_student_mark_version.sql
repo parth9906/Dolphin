@@ -1,0 +1,2 @@
+ALTER TABLE student_mark
+    ADD COLUMN version BIGINT NOT NULL DEFAULT 0;

@@ -3,6 +3,7 @@ package com.school.dolphin.identity.repository;
 import com.school.dolphin.identity.entity.UserAccount;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public interface UserAccountRepository
@@ -11,4 +12,8 @@ public interface UserAccountRepository
     boolean existsByUsername(String username);
 
     boolean existsByEmail(String email);
+
+    Optional<UserAccount> findByUsername(String username);
+
+    Optional<UserAccount> findByEmailIgnoreCase(String email);
 }

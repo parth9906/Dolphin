@@ -8,11 +8,19 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     open-in-view: false
     properties:
       hibernate:
         format_sql: true
 
-  flyway:
-      enabled: true
+logging:
+  level:
+    org.flywaydb: DEBUG
+
+dolphin:
+  security:
+    jwt:
+      secret: ${JWT_SECRET:n8UDq4vd3br1c0JB5frADb5auzu1/WqXpMGQge94OVE=}
+      expiration-ms: 900000
+

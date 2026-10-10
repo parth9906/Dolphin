@@ -4,6 +4,7 @@ import com.school.dolphin.common.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -85,5 +86,37 @@ public class GlobalExceptionHandler {
                         exception.getMessage(),
                         request.getRequestURI()
                 ));
+    }
+
+    @ExceptionHandler(StaleResourceVersionException.class)
+    public ResponseEntity<ErrorResponse> handleStaleResourceVersion(
+            StaleResourceVersionException exception,
+            HttpServletRequest request
+    ) {
+        ErrorResponse response = new ErrorResponse(
+                OffsetDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                "CONCURRENT_MODIFICATION",
+                exception.getMessage(),
+                request.getRequestURI()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLockingFailure(
+            ObjectOptimisticLockingFailureException exception,
+            HttpServletRequest request
+    ) {
+        ErrorResponse response = new ErrorResponse(
+                OffsetDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                "CONCURRENT_MODIFICATION",
+                "This record was changed by another request. Reload it and try again.",
+                request.getRequestURI()
+        );
+
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 }

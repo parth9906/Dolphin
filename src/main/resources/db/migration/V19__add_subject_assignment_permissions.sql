@@ -1,0 +1,43 @@
+
+INSERT INTO permission (
+    id, code, name, description, active, created_at, updated_at
+)
+VALUES
+(
+    gen_random_uuid(), 'SUBJECT_CREATE', 'Create academic subjects',
+    'Create subjects for authorized institutions',
+    TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+),
+(
+    gen_random_uuid(), 'SUBJECT_READ', 'Read academic subjects',
+    'View subjects for authorized institutions',
+    TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+),
+(
+    gen_random_uuid(), 'TEACHER_SUBJECT_ASSIGN', 'Assign teachers to subjects',
+    'Assign teachers to subjects within authorized institutions',
+    TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+),
+(
+    gen_random_uuid(), 'TEACHER_SUBJECT_READ', 'Read teacher subject assignments',
+    'View teacher subject assignments within authorized institutions',
+    TRUE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+)
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO role_permission (role_id, permission_id)
+SELECT r.id, p.id
+FROM role r
+CROSS JOIN permission p
+WHERE r.code = 'PLATFORM_ADMIN'
+  AND p.code IN (
+      'SUBJECT_CREATE',
+      'SUBJECT_READ',
+      'TEACHER_SUBJECT_ASSIGN',
+      'TEACHER_SUBJECT_READ'
+  )
+ON CONFLICT DO NOTHING;
+
+CREATE UNIQUE INDEX uk_teacher_subject_active
+    ON teacher_subject_assignment(staff_assignment_id, subject_id)
+    WHERE active = TRUE;
