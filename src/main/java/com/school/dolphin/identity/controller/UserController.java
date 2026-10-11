@@ -10,6 +10,7 @@ import com.school.dolphin.identity.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -25,6 +26,7 @@ public class UserController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('USER_CREATE')")
     public UserResponse create(
             @Valid @RequestBody CreateUserRequest request
     ) {
@@ -32,6 +34,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_READ')")
     public UserResponse getById(
             @PathVariable UUID id
     ) {
@@ -40,6 +43,7 @@ public class UserController {
 
     @PostMapping("/{userId}/roles/{roleId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('USER_ROLE_ASSIGN')")
     public void assignRole(
             @PathVariable UUID userId,
             @PathVariable UUID roleId
@@ -49,6 +53,7 @@ public class UserController {
 
     @PostMapping("/{userId}/scopes")
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('USER_SCOPE_ASSIGN')")
     public OrganizationScopeResponse assignScope(
             @PathVariable UUID userId,
             @Valid @RequestBody CreateOrganizationScopeRequest request

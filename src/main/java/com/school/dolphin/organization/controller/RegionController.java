@@ -6,6 +6,7 @@ import com.school.dolphin.organization.service.RegionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +21,7 @@ public class RegionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('REGION_CREATE')")
     public RegionResponse create(
             @Valid @RequestBody CreateRegionRequest request
     ) {
@@ -27,6 +29,7 @@ public class RegionController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('REGION_READ')")
     public RegionResponse getById(
             @PathVariable UUID id
     ) {
@@ -34,6 +37,7 @@ public class RegionController {
     }
 
     @GetMapping("/by-enterprise/{enterpriseId}")
+    @PreAuthorize("hasAuthority('REGION_READ')")
     public List<RegionResponse> getByEnterprise(
             @PathVariable UUID enterpriseId
     ) {

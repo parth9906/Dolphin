@@ -5,9 +5,11 @@ import com.school.dolphin.academic.entity.AcademicSubject;
 import com.school.dolphin.academic.entity.AcademicYear;
 import com.school.dolphin.academic.entity.AcademicYearStatus;
 import com.school.dolphin.academic.entity.ClassSection;
+import com.school.dolphin.academic.entity.EnrollmentStatus;
 import com.school.dolphin.academic.repository.AcademicSubjectRepository;
 import com.school.dolphin.academic.repository.AcademicYearRepository;
 import com.school.dolphin.academic.repository.ClassSectionRepository;
+import com.school.dolphin.academic.repository.StudentEnrollmentRepository;
 import com.school.dolphin.academic.repository.TeacherSubjectAssignmentRepository;
 import com.school.dolphin.common.exception.BusinessRuleViolationException;
 import com.school.dolphin.common.exception.DuplicateResourceException;
@@ -22,6 +24,8 @@ import com.school.dolphin.staff.entity.StaffAssignmentStatus;
 import com.school.dolphin.staff.entity.StaffMember;
 import com.school.dolphin.staff.entity.StaffType;
 import com.school.dolphin.staff.repository.StaffAssignmentRepository;
+import com.school.dolphin.student.entity.Student;
+import com.school.dolphin.student.service.CurrentStudentResolver;
 import com.school.dolphin.timetable.dto.*;
 import com.school.dolphin.timetable.entity.ScheduledLesson;
 import com.school.dolphin.timetable.entity.SchoolRoom;
@@ -36,6 +40,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -54,6 +59,8 @@ public class TimetableService {
     private final OrganizationScopeAuthorization scopeAuthorization;
     private final InstitutionRepository institutionRepository;
     private final CampusRepository campusRepository;
+    private final StudentEnrollmentRepository enrollmentRepository;
+    private final CurrentStudentResolver currentStudentResolver;
 
     @Transactional
     public UUID createSlot(
@@ -358,6 +365,47 @@ public class TimetableService {
                         .comparingInt((ScheduledLesson l) ->
                                 l.getSlot().getDayOfWeek())
                         .thenComparing(l -> l.getSlot().getStartTime()))
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ScheduledLessonResponse> getMyTimetable(
+            Authentication authentication
+    ) {
+        Student student = currentStudentResolver.requireStudent(authentication);
+
+        if (!student.isActive()) {
+            throw new AccessDeniedException(
+                    "Inactive students cannot access the student portal");
+        }
+
+        LocalDate today = LocalDate.now();
+
+        List<UUID> sectionIds = enrollmentRepository
+                .findByStudent_IdAndStatus(
+                        student.getId(), EnrollmentStatus.ACTIVE)
+                .stream()
+                .filter(enrollment ->
+                        !enrollment.getStartDate().isAfter(today))
+                .filter(enrollment ->
+                        enrollment.getEndDate() == null
+                                || !enrollment.getEndDate().isBefore(today))
+                .map(enrollment -> enrollment.getSection().getId())
+                .distinct()
+                .toList();
+
+        if (sectionIds.isEmpty()) {
+            return List.of();
+        }
+
+        return lessonRepository.findActiveTimetableForSections(sectionIds)
+                .stream()
+                .sorted(Comparator
+                        .comparingInt((ScheduledLesson lesson) ->
+                                lesson.getSlot().getDayOfWeek())
+                        .thenComparing(lesson ->
+                                lesson.getSlot().getStartTime()))
                 .map(this::toResponse)
                 .toList();
     }

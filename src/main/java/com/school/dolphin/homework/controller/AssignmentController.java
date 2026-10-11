@@ -1,7 +1,9 @@
 package com.school.dolphin.homework.controller;
 
 import com.school.dolphin.homework.dto.AssignmentResponse;
+import com.school.dolphin.homework.dto.AssignmentSubmissionResponse;
 import com.school.dolphin.homework.dto.CreateAssignmentRequest;
+import com.school.dolphin.homework.dto.GradeAssignmentSubmissionRequest;
 import com.school.dolphin.homework.dto.UpdateAssignmentRequest;
 import com.school.dolphin.homework.dto.PublishAssignmentRequest;
 import com.school.dolphin.homework.entity.AssignmentStatus;
@@ -79,5 +81,32 @@ public class AssignmentController {
             Authentication authentication
     ) {
         return assignmentService.publish(assignmentId, request, authentication);
+    }
+
+    @GetMapping("/{assignmentId}/submissions")
+    @PreAuthorize("hasAuthority('ASSIGNMENT_SUBMISSION_READ')")
+    public Page<AssignmentSubmissionResponse> listSubmissions(
+            @PathVariable UUID assignmentId,
+            @PageableDefault(
+                    size = 20,
+                    sort = "submittedAt",
+                    direction = Sort.Direction.ASC
+            ) Pageable pageable,
+            Authentication authentication
+    ) {
+        return assignmentService.listSubmissions(
+                assignmentId, pageable, authentication);
+    }
+
+    @PutMapping("/{assignmentId}/submissions/{submissionId}/grade")
+    @PreAuthorize("hasAuthority('ASSIGNMENT_SUBMISSION_GRADE')")
+    public AssignmentSubmissionResponse gradeSubmission(
+            @PathVariable UUID assignmentId,
+            @PathVariable UUID submissionId,
+            @Valid @RequestBody GradeAssignmentSubmissionRequest request,
+            Authentication authentication
+    ) {
+        return assignmentService.gradeSubmission(
+                assignmentId, submissionId, request, authentication);
     }
 }

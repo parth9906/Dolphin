@@ -6,6 +6,7 @@ import com.school.dolphin.organization.service.ClusterService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +21,7 @@ public class ClusterController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('CLUSTER_CREATE')")
     public ClusterResponse create(
             @Valid @RequestBody CreateClusterRequest request
     ) {
@@ -27,6 +29,7 @@ public class ClusterController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('CLUSTER_READ')")
     public ClusterResponse getById(
             @PathVariable UUID id
     ) {
@@ -34,6 +37,7 @@ public class ClusterController {
     }
 
     @GetMapping("/by-region/{regionId}")
+    @PreAuthorize("hasAuthority('CLUSTER_READ')")
     public List<ClusterResponse> getByRegion(
             @PathVariable UUID regionId
     ) {

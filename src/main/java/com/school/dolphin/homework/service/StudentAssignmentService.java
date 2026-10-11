@@ -15,10 +15,8 @@ import com.school.dolphin.homework.entity.AssignmentSubmission;
 import com.school.dolphin.homework.entity.AssignmentSubmissionStatus;
 import com.school.dolphin.homework.repository.AssignmentRepository;
 import com.school.dolphin.homework.repository.AssignmentSubmissionRepository;
-import com.school.dolphin.identity.entity.UserAccount;
-import com.school.dolphin.identity.security.AuthenticatedUserResolver;
 import com.school.dolphin.student.entity.Student;
-import com.school.dolphin.student.repository.StudentAccountLinkRepository;
+import com.school.dolphin.student.service.CurrentStudentResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -39,15 +37,15 @@ public class StudentAssignmentService {
     private final AssignmentRepository assignmentRepository;
     private final AssignmentSubmissionRepository submissionRepository;
     private final StudentEnrollmentRepository enrollmentRepository;
-    private final StudentAccountLinkRepository studentAccountLinkRepository;
-    private final AuthenticatedUserResolver authenticatedUserResolver;
+    private final CurrentStudentResolver currentStudentResolver;
 
     @Transactional(readOnly = true)
     public Page<AssignmentResponse> listAvailableAssignments(
             Authentication authentication,
             Pageable pageable
     ) {
-        Student student = getCurrentStudent(authentication);
+        Student student =
+                currentStudentResolver.requireStudent(authentication);
         ensureStudentActive(student);
 
         LocalDate today = LocalDate.now();
@@ -81,7 +79,8 @@ public class StudentAssignmentService {
             SubmitAssignmentRequest request,
             Authentication authentication
     ) {
-        Student student = getCurrentStudent(authentication);
+        Student student =
+                currentStudentResolver.requireStudent(authentication);
         ensureStudentActive(student);
 
         Assignment assignment = assignmentRepository.findById(assignmentId)
@@ -147,7 +146,8 @@ public class StudentAssignmentService {
             UUID assignmentId,
             Authentication authentication
     ) {
-        Student student = getCurrentStudent(authentication);
+        Student student =
+                currentStudentResolver.requireStudent(authentication);
 
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() ->
@@ -162,18 +162,6 @@ public class StudentAssignmentService {
                         new ResourceNotFoundException("Submission not found"));
 
         return AssignmentSubmissionResponse.from(submission);
-    }
-
-    private Student getCurrentStudent(Authentication authentication) {
-        UserAccount user = authenticatedUserResolver
-                .requireUserAccount(authentication);
-
-        return studentAccountLinkRepository
-                .findByUserAccount_Id(user.getId())
-                .map(link -> link.getStudent())
-                .orElseThrow(() ->
-                        new AccessDeniedException(
-                                "No student profile is linked to this account"));
     }
 
     private void ensureStudentActive(Student student) {

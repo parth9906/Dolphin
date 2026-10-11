@@ -39,6 +39,7 @@ public class RoleController {
 
     @PostMapping("/{roleId}/permissions/{permissionId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('ROLE_PERMISSION_ASSIGN')")
     public void assignPermission(
             @PathVariable UUID roleId,
             @PathVariable UUID permissionId

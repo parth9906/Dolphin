@@ -54,28 +54,6 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
-    public Page<NotificationResponse> getInbox(
-            Authentication authentication,
-            int page,
-            int size
-    ) {
-        if (page < 0 || size < 1 || size > 100) {
-            throw new IllegalArgumentException(
-                    "Page must be non-negative and size must be between 1 and 100"
-            );
-        }
-
-        UserAccount user = getAuthenticatedUser(authentication);
-
-        return notificationRepository
-                .findByRecipientUser_IdOrderByCreatedAtDesc(
-                        user.getId(),
-                        PageRequest.of(page, size)
-                )
-                .map(this::toResponse);
-    }
-
-    @Transactional(readOnly = true)
     public long getUnreadCount(Authentication authentication) {
         UserAccount user = getAuthenticatedUser(authentication);
 

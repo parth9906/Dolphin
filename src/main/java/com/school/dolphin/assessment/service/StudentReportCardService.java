@@ -6,8 +6,10 @@ import com.school.dolphin.assessment.dto.SubjectResultResponse;
 import com.school.dolphin.assessment.entity.StudentMark;
 import com.school.dolphin.assessment.repository.StudentMarkRepository;
 import com.school.dolphin.identity.security.OrganizationScopeAuthorization;
+import com.school.dolphin.common.exception.BusinessRuleViolationException;
 import com.school.dolphin.student.entity.Student;
 import com.school.dolphin.student.repository.StudentRepository;
+import com.school.dolphin.student.service.CurrentStudentResolver;
 import com.school.dolphin.common.exception.ResourceNotFoundException;
 
 import org.springframework.security.access.AccessDeniedException;
@@ -33,17 +35,20 @@ public class StudentReportCardService {
     private final StudentRepository studentRepository;
     private final OrganizationScopeAuthorization scopeAuthorization;
     private final GradeCalculator gradeCalculator;
+    private final CurrentStudentResolver currentStudentResolver;
 
     public StudentReportCardService(
             StudentMarkRepository studentMarkRepository,
             StudentRepository studentRepository,
             OrganizationScopeAuthorization scopeAuthorization,
-            GradeCalculator gradeCalculator
+            GradeCalculator gradeCalculator,
+            CurrentStudentResolver currentStudentResolver
     ) {
         this.studentMarkRepository = studentMarkRepository;
         this.studentRepository = studentRepository;
         this.scopeAuthorization = scopeAuthorization;
         this.gradeCalculator = gradeCalculator;
+        this.currentStudentResolver = currentStudentResolver;
     }
 
     @Transactional(readOnly = true)
@@ -69,6 +74,35 @@ public class StudentReportCardService {
                     "You do not have access to this student's institution"
             );
         }
+
+        return buildReportCard(student, fromDate, toDate);
+    }
+
+    @Transactional(readOnly = true)
+    public StudentReportCardResponse getMyReportCard(
+            LocalDate fromDate,
+            LocalDate toDate,
+            Authentication authentication
+    ) {
+        Student student = currentStudentResolver.requireStudent(authentication);
+
+        if (!student.isActive()) {
+            throw new AccessDeniedException(
+                    "Inactive students cannot access the student portal");
+        }
+
+        validateDateRange(fromDate, toDate);
+
+        return buildReportCard(student, fromDate, toDate);
+    }
+
+    private StudentReportCardResponse buildReportCard(
+            Student student,
+            LocalDate fromDate,
+            LocalDate toDate
+    ) {
+        UUID studentId = student.getId();
+        UUID institutionId = student.getInstitution().getId();
 
         List<StudentMark> marks =
                 studentMarkRepository.findReportCardMarks(
@@ -172,22 +206,19 @@ public class StudentReportCardService {
             LocalDate toDate
     ) {
         if (fromDate == null || toDate == null) {
-            throw new IllegalArgumentException(
-                    "Both fromDate and toDate are required"
-            );
+            throw new BusinessRuleViolationException(
+                    "Both fromDate and toDate are required");
         }
 
         if (fromDate.isAfter(toDate)) {
-            throw new IllegalArgumentException(
-                    "fromDate must not be after toDate"
-            );
+            throw new BusinessRuleViolationException(
+                    "fromDate must not be after toDate");
         }
 
         if (ChronoUnit.DAYS.between(fromDate, toDate)
                 > MAX_REPORT_RANGE_DAYS) {
-            throw new IllegalArgumentException(
-                    "Report date range cannot exceed 366 days"
-            );
+            throw new BusinessRuleViolationException(
+                    "Report date range cannot exceed 366 days");
         }
     }
 

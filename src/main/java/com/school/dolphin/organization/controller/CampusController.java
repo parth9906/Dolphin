@@ -6,6 +6,7 @@ import com.school.dolphin.organization.service.CampusService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -19,6 +20,7 @@ public class CampusController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('CAMPUS_CREATE')")
     public CampusResponse create(
             @Valid @RequestBody CreateCampusRequest request
     ) {
@@ -26,6 +28,7 @@ public class CampusController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('CAMPUS_READ')")
     public CampusResponse getById(
             @PathVariable UUID id
     ) {

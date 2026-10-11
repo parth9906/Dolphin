@@ -19,15 +19,6 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
-    @GetMapping
-    public Page<NotificationResponse> getInbox(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            Authentication authentication
-    ) {
-        return notificationService.getInbox(authentication, page, size);
-    }
-
     @GetMapping("/unread-count")
     public Map<String, Long> getUnreadCount(
             Authentication authentication

@@ -6,6 +6,7 @@ import com.school.dolphin.organization.service.EnterpriseService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -19,6 +20,7 @@ public class EnterpriseController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('ENTERPRISE_CREATE')")
     public EnterpriseResponse create(
             @Valid @RequestBody CreateEnterpriseRequest request
     ) {
@@ -26,6 +28,7 @@ public class EnterpriseController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('ENTERPRISE_READ')")
     public EnterpriseResponse getById(
             @PathVariable UUID id
     ) {

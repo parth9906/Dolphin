@@ -6,6 +6,7 @@ import com.school.dolphin.organization.service.InstitutionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -19,6 +20,7 @@ public class InstitutionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('INSTITUTION_CREATE')")
     public InstitutionResponse create(
             @Valid @RequestBody CreateInstitutionRequest request
     ) {
@@ -26,6 +28,7 @@ public class InstitutionController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('INSTITUTION_READ')")
     public InstitutionResponse getById(
             @PathVariable UUID id
     ) {

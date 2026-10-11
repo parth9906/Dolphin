@@ -34,6 +34,7 @@ import com.school.dolphin.student.entity.Student;
 import com.school.dolphin.timetable.entity.LessonOccurrence;
 import com.school.dolphin.timetable.entity.LessonOccurrenceStatus;
 import com.school.dolphin.timetable.repository.LessonOccurrenceRepository;
+import com.school.dolphin.timetable.service.TeacherSectionAuthorization;
 
 import lombok.RequiredArgsConstructor;
 
@@ -47,6 +48,7 @@ public class LessonAttendanceService {
     private final StudentEnrollmentRepository enrollmentRepository;
     private final AuthenticatedUserResolver authenticatedUserResolver;
     private final OrganizationScopeAuthorization organizationScopeAuthorization;
+    private final TeacherSectionAuthorization teacherSectionAuthorization;
 
     @Transactional(readOnly = true)
     public List<LessonAttendanceResponse> getAttendance(
@@ -155,14 +157,7 @@ public class LessonAttendanceService {
 
         LessonOccurrence occurrence = record.getLessonOccurrence();
 
-        authorizeInstitution(
-                authentication,
-                occurrence.getScheduledLesson()
-                        .getSection()
-                        .getSchoolClass()
-                        .getAcademicYear()
-                        .getInstitution()
-                        .getId());
+        authorizeOccurrenceAccess(authentication, occurrence);
 
         UserAccount currentUser = getAuthenticatedUser(authentication);
 
@@ -199,14 +194,7 @@ public class LessonAttendanceService {
 
         LessonOccurrence occurrence = record.getLessonOccurrence();
 
-        authorizeInstitution(
-                authentication,
-                occurrence.getScheduledLesson()
-                        .getSection()
-                        .getSchoolClass()
-                        .getAcademicYear()
-                        .getInstitution()
-                        .getId());
+        authorizeOccurrenceAccess(authentication, occurrence);
 
         return auditRepository
                 .findByAttendanceRecord_IdOrderByChangedAtDesc(
@@ -429,6 +417,15 @@ public class LessonAttendanceService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Lesson occurrence not found"));
 
+        authorizeOccurrenceAccess(authentication, occurrence);
+
+        return occurrence;
+    }
+
+    private void authorizeOccurrenceAccess(
+            Authentication authentication,
+            LessonOccurrence occurrence) {
+
         UUID institutionId = occurrence.getScheduledLesson()
                 .getSection()
                 .getSchoolClass()
@@ -436,9 +433,23 @@ public class LessonAttendanceService {
                 .getInstitution()
                 .getId();
 
-        authorizeInstitution(authentication, institutionId);
+        if (organizationScopeAuthorization.canAccessInstitution(
+                authentication, institutionId)) {
+            return;
+        }
 
-        return occurrence;
+        UUID sectionId = occurrence.getScheduledLesson().getSection().getId();
+
+        if (teacherSectionAuthorization.isCurrentUserTeachingSection(
+                authentication,
+                sectionId,
+                institutionId,
+                occurrence.getLessonDate())) {
+            return;
+        }
+
+        throw new AccessDeniedException(
+                "You are not authorized to access attendance for this lesson");
     }
 
     private void authorizeInstitution(

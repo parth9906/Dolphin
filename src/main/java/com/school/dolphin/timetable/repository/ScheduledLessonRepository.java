@@ -60,4 +60,19 @@ public interface ScheduledLessonRepository
 
     boolean existsByRoom_IdAndSlot_IdAndIdNotAndActiveTrue(
             UUID roomId, UUID slotId, UUID lessonId);
+
+    @Query("""
+        SELECT sl
+        FROM ScheduledLesson sl
+        JOIN FETCH sl.section
+        JOIN FETCH sl.slot
+        JOIN FETCH sl.subject
+        JOIN FETCH sl.teacherAssignment assignment
+        JOIN FETCH assignment.staffMember
+        LEFT JOIN FETCH sl.room
+        WHERE sl.active = true
+          AND sl.section.id IN :sectionIds
+        """)
+    List<ScheduledLesson> findActiveTimetableForSections(
+            @Param("sectionIds") java.util.Collection<UUID> sectionIds);
 }

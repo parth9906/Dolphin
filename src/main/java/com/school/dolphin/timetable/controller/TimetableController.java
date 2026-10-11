@@ -34,6 +34,16 @@ public class TimetableController {
         this.substituteAssignmentService = substituteAssignmentService;
     }
 
+    @PostMapping("/rooms")
+    @PreAuthorize("hasAuthority('ROOM_CREATE')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public UUID createRoom(
+            @Valid @RequestBody CreateSchoolRoomRequest request,
+            Authentication authentication
+    ) {
+        return timetableService.createRoom(request, authentication);
+    }
+
     @GetMapping("/rooms")
     @PreAuthorize("hasAuthority('ROOM_READ')")
     public List<SchoolRoomResponse> getRooms(
@@ -41,6 +51,16 @@ public class TimetableController {
             Authentication authentication
     ) {
         return timetableService.getRooms(institutionId, authentication);
+    }
+
+    @PostMapping("/slots")
+    @PreAuthorize("hasAuthority('TIMETABLE_SLOT_CREATE')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public UUID createSlot(
+            @Valid @RequestBody CreateTimetableSlotRequest request,
+            Authentication authentication
+    ) {
+        return timetableService.createSlot(request, authentication);
     }
 
     @GetMapping("/slots")
@@ -68,6 +88,16 @@ public class TimetableController {
             Authentication authentication
     ) {
         return timetableService.getTeacherTimetable(staffAssignmentId, authentication);
+    }
+
+    @PostMapping("/lessons")
+    @PreAuthorize("hasAuthority('TIMETABLE_LESSON_CREATE')")
+    @ResponseStatus(HttpStatus.CREATED)
+    public UUID createLesson(
+            @Valid @RequestBody CreateScheduledLessonRequest request,
+            Authentication authentication
+    ) {
+        return timetableService.createLesson(request, authentication);
     }
 
     @PutMapping("/lessons/{lessonId}")

@@ -320,17 +320,6 @@ public class StudentService {
     }
 
     private StudentResponse toResponse(Student student) {
-        return new StudentResponse(
-                student.getId(),
-                student.getInstitution().getId(),
-                student.getCampus() == null
-                        ? null
-                        : student.getCampus().getId(),
-                student.getAdmissionNumber(),
-                student.getFirstName(),
-                student.getLastName(),
-                student.getDateOfBirth(),
-                student.isActive()
-        );
+        return StudentResponse.from(student);
     }
 }

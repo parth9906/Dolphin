@@ -1,11 +1,13 @@
 package com.school.dolphin.homework.entity;
 
 import com.school.dolphin.student.entity.Student;
+import com.school.dolphin.staff.entity.StaffMember;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -43,6 +45,19 @@ public class AssignmentSubmission {
 
     @Column(name = "submitted_at", nullable = false)
     private OffsetDateTime submittedAt;
+
+    @Column(name = "marks_obtained", precision = 8, scale = 2)
+    private BigDecimal marksObtained;
+
+    @Column(columnDefinition = "TEXT")
+    private String feedback;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "graded_by_staff_id")
+    private StaffMember gradedBy;
+
+    @Column(name = "graded_at")
+    private OffsetDateTime gradedAt;
 
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;

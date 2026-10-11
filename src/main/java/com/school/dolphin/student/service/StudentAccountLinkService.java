@@ -4,8 +4,16 @@ import com.school.dolphin.common.exception.BusinessRuleViolationException;
 import com.school.dolphin.common.exception.DuplicateResourceException;
 import com.school.dolphin.common.exception.ResourceNotFoundException;
 import com.school.dolphin.guardian.repository.GuardianRepository;
+import com.school.dolphin.identity.entity.OrganizationScopeType;
+import com.school.dolphin.identity.entity.Role;
 import com.school.dolphin.identity.entity.UserAccount;
+import com.school.dolphin.identity.entity.UserOrganizationScope;
+import com.school.dolphin.identity.entity.UserRole;
+import com.school.dolphin.identity.entity.UserRoleId;
 import com.school.dolphin.identity.repository.UserAccountRepository;
+import com.school.dolphin.identity.repository.RoleRepository;
+import com.school.dolphin.identity.repository.UserOrganizationScopeRepository;
+import com.school.dolphin.identity.repository.UserRoleRepository;
 import com.school.dolphin.identity.security.OrganizationScopeAuthorization;
 import com.school.dolphin.staff.repository.StaffMemberRepository;
 import com.school.dolphin.student.dto.LinkStudentAccountRequest;
@@ -26,12 +34,17 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class StudentAccountLinkService {
 
+    private static final String STUDENT_ROLE_CODE = "STUDENT";
+
     private final StudentRepository studentRepository;
     private final UserAccountRepository userAccountRepository;
     private final StudentAccountLinkRepository studentAccountLinkRepository;
     private final StaffMemberRepository staffMemberRepository;
     private final GuardianRepository guardianRepository;
     private final OrganizationScopeAuthorization scopeAuthorization;
+    private final RoleRepository roleRepository;
+    private final UserRoleRepository userRoleRepository;
+    private final UserOrganizationScopeRepository userOrganizationScopeRepository;
 
     @Transactional
     public StudentAccountLinkResponse link(
@@ -78,11 +91,51 @@ public class StudentAccountLinkService {
                     "A staff or guardian account cannot also be linked to a student");
         }
 
+        Role studentRole = roleRepository.findByCode(STUDENT_ROLE_CODE)
+                .filter(Role::isActive)
+                .orElseThrow(() -> new BusinessRuleViolationException(
+                        "Student role is not configured or inactive"));
+
         StudentAccountLink link = new StudentAccountLink();
         link.setStudent(student);
         link.setUserAccount(userAccount);
 
-        return StudentAccountLinkResponse.from(
-                studentAccountLinkRepository.save(link));
+        StudentAccountLink saved = studentAccountLinkRepository.save(link);
+
+        assignRole(userAccount, studentRole);
+        assignInstitutionScope(userAccount, student.getInstitution().getId());
+
+        return StudentAccountLinkResponse.from(saved);
+    }
+
+    private void assignRole(UserAccount userAccount, Role role) {
+        if (userRoleRepository.existsByUserIdAndRoleId(
+                userAccount.getId(), role.getId())) {
+            return;
+        }
+
+        userRoleRepository.save(UserRole.builder()
+                .id(new UserRoleId(userAccount.getId(), role.getId()))
+                .user(userAccount)
+                .role(role)
+                .build());
+    }
+
+    private void assignInstitutionScope(
+            UserAccount userAccount,
+            UUID institutionId
+    ) {
+        if (userOrganizationScopeRepository.existsByUserIdAndScopeTypeAndScopeId(
+                userAccount.getId(),
+                OrganizationScopeType.INSTITUTION,
+                institutionId)) {
+            return;
+        }
+
+        userOrganizationScopeRepository.save(UserOrganizationScope.builder()
+                .user(userAccount)
+                .scopeType(OrganizationScopeType.INSTITUTION)
+                .scopeId(institutionId)
+                .build());
     }
 }

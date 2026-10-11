@@ -6,12 +6,17 @@ import com.school.dolphin.common.exception.BusinessRuleViolationException;
 import com.school.dolphin.common.exception.ResourceNotFoundException;
 import com.school.dolphin.common.exception.StaleResourceVersionException;
 import com.school.dolphin.homework.dto.AssignmentResponse;
+import com.school.dolphin.homework.dto.AssignmentSubmissionResponse;
 import com.school.dolphin.homework.dto.CreateAssignmentRequest;
+import com.school.dolphin.homework.dto.GradeAssignmentSubmissionRequest;
 import com.school.dolphin.homework.dto.UpdateAssignmentRequest;
 import com.school.dolphin.homework.dto.PublishAssignmentRequest;
 import com.school.dolphin.homework.entity.Assignment;
 import com.school.dolphin.homework.entity.AssignmentStatus;
+import com.school.dolphin.homework.entity.AssignmentSubmission;
+import com.school.dolphin.homework.entity.AssignmentSubmissionStatus;
 import com.school.dolphin.homework.repository.AssignmentRepository;
+import com.school.dolphin.homework.repository.AssignmentSubmissionRepository;
 import com.school.dolphin.identity.entity.UserAccount;
 import com.school.dolphin.identity.security.AuthenticatedUserResolver;
 import com.school.dolphin.identity.security.OrganizationScopeAuthorization;
@@ -19,9 +24,7 @@ import com.school.dolphin.organization.entity.Institution;
 import com.school.dolphin.organization.repository.InstitutionRepository;
 import com.school.dolphin.staff.entity.StaffMember;
 import com.school.dolphin.staff.repository.StaffMemberRepository;
-import com.school.dolphin.staff.entity.StaffAssignmentStatus;
-import com.school.dolphin.staff.entity.StaffType;
-import com.school.dolphin.timetable.repository.ScheduledLessonRepository;
+import com.school.dolphin.timetable.service.TeacherSectionAuthorization;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +33,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -39,11 +43,12 @@ import java.util.UUID;
 public class AssignmentService {
 
     private final AssignmentRepository assignmentRepository;
+    private final AssignmentSubmissionRepository assignmentSubmissionRepository;
     private final InstitutionRepository institutionRepository;
     private final ClassSectionRepository classSectionRepository;
     private final StaffMemberRepository staffMemberRepository;
     private final AuthenticatedUserResolver authenticatedUserResolver;
-    private final ScheduledLessonRepository scheduledLessonRepository;
+    private final TeacherSectionAuthorization teacherSectionAuthorization;
     private final OrganizationScopeAuthorization scopeAuthorization;
 
     @Transactional
@@ -201,6 +206,74 @@ public class AssignmentService {
         return AssignmentResponse.from(assignmentRepository.save(assignment));
     }
 
+    @Transactional(readOnly = true)
+    public Page<AssignmentSubmissionResponse> listSubmissions(
+            UUID assignmentId,
+            Pageable pageable,
+            Authentication authentication
+    ) {
+        Assignment assignment = findAssignment(assignmentId);
+        validateInstitutionAccess(
+                authentication, assignment.getInstitution().getId());
+        ensureCurrentStaffCanManageAssignment(authentication, assignment);
+
+        return assignmentSubmissionRepository
+                .findByAssignment_Id(assignmentId, pageable)
+                .map(AssignmentSubmissionResponse::from);
+    }
+
+    @Transactional
+    public AssignmentSubmissionResponse gradeSubmission(
+            UUID assignmentId,
+            UUID submissionId,
+            GradeAssignmentSubmissionRequest request,
+            Authentication authentication
+    ) {
+        Assignment assignment = findAssignment(assignmentId);
+        validateInstitutionAccess(
+                authentication, assignment.getInstitution().getId());
+
+        if (assignment.getStatus() != AssignmentStatus.PUBLISHED) {
+            throw new BusinessRuleViolationException(
+                    "Only published assignments can be graded");
+        }
+
+        StaffMember grader =
+                ensureCurrentStaffCanManageAssignment(authentication, assignment);
+
+        AssignmentSubmission submission = assignmentSubmissionRepository
+                .findByIdAndAssignment_Id(submissionId, assignmentId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Assignment submission not found"));
+
+        if (!submission.getVersion().equals(request.version())) {
+            throw new StaleResourceVersionException(
+                    "The submission was modified by another request. Reload it and try again.");
+        }
+
+        BigDecimal marks = request.marksObtained();
+
+        if (marks.compareTo(BigDecimal.ZERO) < 0
+                || marks.compareTo(assignment.getMaxMarks()) > 0) {
+            throw new BusinessRuleViolationException(
+                    "Marks must be between 0 and " + assignment.getMaxMarks());
+        }
+
+        submission.setMarksObtained(marks);
+        submission.setFeedback(normalizeFeedback(request.feedback()));
+        submission.setGradedBy(grader);
+        submission.setGradedAt(OffsetDateTime.now());
+        submission.setStatus(AssignmentSubmissionStatus.GRADED);
+
+        return AssignmentSubmissionResponse.from(
+                assignmentSubmissionRepository.saveAndFlush(submission));
+    }
+
+    private String normalizeFeedback(String feedback) {
+        return feedback == null || feedback.isBlank()
+                ? null : feedback.trim();
+    }
+
     private Assignment findAssignment(UUID assignmentId) {
         return assignmentRepository.findById(assignmentId)
                 .orElseThrow(() ->
@@ -253,7 +326,7 @@ public class AssignmentService {
         return staff;
     }
 
-    private void ensureCurrentStaffCanManageAssignment(
+    private StaffMember ensureCurrentStaffCanManageAssignment(
             Authentication authentication,
             Assignment assignment
     ) {
@@ -261,13 +334,15 @@ public class AssignmentService {
 
         if (!staff.getId().equals(assignment.getCreatedBy().getId())) {
             throw new AccessDeniedException(
-                    "Only the assignment creator can modify or publish it");
+                    "Only the assignment creator can manage this assignment");
         }
 
         ensureStaffCanTeachSection(
                 staff,
                 assignment.getSection(),
                 assignment.getInstitution().getId());
+
+        return staff;
     }
 
     private void ensureStaffCanTeachSection(
@@ -277,15 +352,11 @@ public class AssignmentService {
     ) {
         LocalDate today = LocalDate.now();
 
-        boolean teachesSection = scheduledLessonRepository
-                .existsActiveTeachingAssignmentForSection(
-                                section.getId(),
-                                staff.getId(),
-                                institutionId,
-                                StaffAssignmentStatus.ACTIVE,
-                                StaffType.TEACHER,
-                                today
-                        );
+        boolean teachesSection = teacherSectionAuthorization.isTeachingSection(
+                staff.getId(),
+                section.getId(),
+                institutionId,
+                today);
 
         if (!teachesSection) {
             throw new AccessDeniedException(

@@ -6,6 +6,7 @@ import com.school.dolphin.identity.service.PermissionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -19,6 +20,7 @@ public class PermissionController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('PERMISSION_CREATE')")
     public PermissionResponse create(
             @Valid @RequestBody CreatePermissionRequest request
     ) {
@@ -26,6 +28,7 @@ public class PermissionController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('PERMISSION_READ')")
     public PermissionResponse getById(
             @PathVariable UUID id
     ) {
