@@ -90,6 +90,20 @@ public class NotificationOutbox {
         lastError = null;
     }
 
+    public void markDead(OffsetDateTime now, String error) {
+        if (!"PROCESSING".equals(status)) {
+            throw new IllegalStateException(
+                    "Cannot mark outbox event " + id
+                            + " as DEAD from status " + status
+            );
+        }
+
+        status = "DEAD";
+        lockedAt = null;
+        updatedAt = now;
+        lastError = error;
+    }
+
     public void scheduleRetry(
             OffsetDateTime nextAttempt,
             String error,

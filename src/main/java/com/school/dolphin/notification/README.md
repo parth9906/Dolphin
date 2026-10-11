@@ -20,8 +20,12 @@ Dependencies: `identity` (recipients are user accounts); consumed by
 `attendance` (alert notifications).
 
 Principal classes: `controller/{NotificationController,NotificationOutboxAdminController}`,
-`service/{NotificationService,NotificationOutboxAdminService,NotificationOutboxClaimService,NotificationOutboxDispatchService,NotificationOutboxStateService,NotificationOutboxWorker,AttendanceAlertNotificationSender,AttendanceAlertNotificationSenderImpl}`,
+`service/{NotificationService,NotificationOutboxAdminService,NotificationOutboxClaimService,NotificationOutboxDispatchService,NotificationOutboxStateService,NotificationOutboxWorker,OutboxEventHandler,AttendanceAlertOutboxEventHandler,AttendanceAlertNotificationSender,AttendanceAlertNotificationSenderImpl}`,
 `entity/{Notification,NotificationOutbox}`.
+
+Outbox dispatch is handler-based: every `OutboxEventHandler` bean is registered
+by `eventType()` when `NotificationOutboxDispatchService` starts. Duplicate,
+null, or blank registrations fail application startup.
 
 ## B. API conventions
 
@@ -93,6 +97,12 @@ No params. Response `200` `NotificationOutboxSummaryResponse` =
 - Mark-read operations are ownership-checked against the authenticated user.
 - The outbox worker claims `PENDING` events (locking), marks `DELIVERED` or
   reschedules; events exceeding retry attempts become `DEAD`.
+- If a claimed event has no registered handler, it is marked `DEAD` immediately
+  with a descriptive `lastError`; this configuration error does not consume
+  retry attempts. Failures raised by a registered handler still use the normal
+  retry/backoff behavior. The `DEAD` transition is only valid from
+  `PROCESSING` and is rejected otherwise, so a delivered event cannot be
+  overwritten.
 
 ## F. Authorization matrix
 
@@ -111,6 +121,7 @@ No params. Response `200` `NotificationOutboxSummaryResponse` =
 ```
 NotificationOutbox: PENDING --claim--> PROCESSING --deliver--> DELIVERED
                      ^                        \--fail--> PENDING (retry)
+                     |                        \--no handler--> DEAD (immediate)
                      \-------------------------------- DEAD (exhausted)
 Notification: unread --mark read--> read
 ```
@@ -126,6 +137,7 @@ Notification: unread --mark read--> read
 - Inbox endpoints rely solely on authentication with no permission code; this is
   intentional (self-scoped) but should be documented in any security review.
 - No per-notification preferences or channel selection.
- The outbox dispatch currently supports only the `ATTENDANCE_ALERT_CREATED`
- event type; any other event type fails dispatch (`IllegalStateException`), and
- there is no external delivery provider in V1.
+- The outbox dispatch currently has a single registered handler for the
+  `ATTENDANCE_ALERT_CREATED` event type. Any other event type is marked `DEAD`
+  immediately (no handler registered) instead of being retried; there is no
+  external delivery provider in V1.

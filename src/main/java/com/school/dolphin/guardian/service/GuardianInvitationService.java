@@ -133,7 +133,7 @@ public class GuardianInvitationService {
         ));
 
         return new GuardianInvitationResponse(
-                saved.getId(), email, expiresAt
+                saved.getId(), rawToken, email, expiresAt
         );
     }
 

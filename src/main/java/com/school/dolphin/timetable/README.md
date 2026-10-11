@@ -43,8 +43,8 @@ Principal classes: `controller/{TimetableController,StudentPortalTimetableContro
 | POST | `/api/v1/timetable/lessons` | Create lesson | `TIMETABLE_LESSON_CREATE` | institution |
 | PUT | `/api/v1/timetable/lessons/{lessonId}` | Reschedule lesson | `TIMETABLE_LESSON_UPDATE` | institution |
 | PATCH | `/api/v1/timetable/lessons/{lessonId}/cancel` | Cancel lesson | `TIMETABLE_LESSON_CANCEL` | institution |
-| POST | `/api/v1/timetable/occurrences/generate` | Generate occurrences | `TIMETABLE_LESSON_CREATE` | **missing** |
-| GET | `/api/v1/timetable/occurrences` | List occurrences | `TIMETABLE_READ` | **missing** |
+| POST | `/api/v1/timetable/occurrences/generate` | Generate occurrences | `TIMETABLE_LESSON_CREATE` | institution |
+| GET | `/api/v1/timetable/occurrences` | List occurrences | `TIMETABLE_READ` | institution |
 | POST | `/api/v1/timetable/occurrences/{occurrenceId}/substitute` | Assign substitute | `SUBSTITUTE_ASSIGN` | institution |
 | GET | `/api/v1/timetable/occurrences/coverage` | Coverage list | `TIMETABLE_READ` | institution |
 | GET | `/api/v1/timetable/occurrences/{occurrenceId}/substitute-audit` | Substitute audit | `TIMETABLE_READ` | institution |
@@ -90,12 +90,16 @@ room).
 `GenerateLessonOccurrencesRequest`: `sectionId`, `startDate`, `endDate`
 (required; `endDate >= startDate`). Response `201` integer (occurrences created).
 Rules: range <= 366 days; occurrences skipped when they already exist or the
-teacher is on approved leave.
+teacher is on approved leave. Scope: institution scope for the section's
+institution (resolved from the section); an unknown section returns `404` and
+an out-of-scope section returns `403`.
 
 ### GET /api/v1/timetable/occurrences
 
 Query: `sectionId`, `startDate`, `endDate`. Response `200`
-`List<LessonOccurrenceResponse>`.
+`List<LessonOccurrenceResponse>`. Scope: institution scope for the section's
+institution (`404` for an unknown section, `403` when out of scope). Range:
+`endDate >= startDate` and at most 366 days (`422` otherwise).
 
 ### POST /api/v1/timetable/occurrences/{occurrenceId}/substitute
 
@@ -114,7 +118,8 @@ No params. Resolves the student's active enrollments and returns
 ## E. Validation and business rules
 
 - `dayOfWeek` in `1..7`; `startTime`/`endTime` required.
-- Occurrence generation capped at 366 days; skips teacher-on-leave days.
+- Occurrence generation and occurrence listing are each capped at 366 days;
+  generation skips teacher-on-leave days.
 - Substitute assignment validates the substitute assignment and logs audit.
 - `AssertTrue` validation on the occurrence date range.
 
@@ -124,8 +129,8 @@ No params. Resolves the student's active enrollments and returns
 |---|---|---|---|---|
 | `ROOM_READ` / `ROOM_CREATE` | yes | yes | - | institution scope |
 | `TIMETABLE_SLOT_READ` / `TIMETABLE_SLOT_CREATE` | yes | yes | - | institution scope |
-| `TIMETABLE_READ` | yes | - | - | institution scope (except `/occurrences`) |
-| `TIMETABLE_LESSON_CREATE` | - | yes | - | institution scope (except `/occurrences/generate`) |
+| `TIMETABLE_READ` | yes | - | - | institution scope |
+| `TIMETABLE_LESSON_CREATE` | - | yes | - | institution scope |
 | `TIMETABLE_LESSON_UPDATE` / `TIMETABLE_LESSON_CANCEL` | - | - | yes | institution scope |
 | `TEACHER_TIMETABLE_READ` | yes | - | - | institution scope |
 | `SUBSTITUTE_ASSIGN` | - | - | yes | institution scope |
@@ -150,14 +155,10 @@ LessonOccurrence: scheduled --substitute--> teacher replaced (audited)
 
 ## J. Open issues and implementation gaps
 
-- **Missing scope check (important):** `POST /api/v1/timetable/occurrences/generate`
-  and `GET /api/v1/timetable/occurrences` receive no `Authentication` and call
-  `LessonOccurrenceService.generateForSection(...)` /
-  `getSectionOccurrences(...)` directly. Neither method performs an
-  institution-scope check, and the controller comments acknowledge the check is
-  absent. Any user holding `TIMETABLE_LESSON_CREATE` or `TIMETABLE_READ` can
-  generate or read occurrences for any section, across institutions. This needs
-  an authorization fix (service should accept `Authentication` and call
-  `OrganizationScopeAuthorization`).
+- **Resolved (was: missing scope check).** `POST /api/v1/timetable/occurrences/generate`
+  and `GET /api/v1/timetable/occurrences` now receive the authenticated
+  principal and enforce institution scope. The service resolves the section's
+  institution and calls `OrganizationScopeAuthorization.canAccessInstitution(...)`:
+  an unknown section returns `404` and an out-of-scope section returns `403`.
 - No update/delete for rooms, slots or lessons (only reschedule/cancel).
-- Occurrence listing has no pagination or range cap.
+- Occurrence listing is not paginated; its date range is capped at 366 days.

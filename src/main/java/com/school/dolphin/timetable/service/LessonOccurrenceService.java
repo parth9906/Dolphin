@@ -9,12 +9,15 @@ import java.util.UUID;
 import com.school.dolphin.identity.security.OrganizationScopeAuthorization;
 import com.school.dolphin.leave.entity.LeaveRequestStatus;
 import com.school.dolphin.leave.repository.StaffLeaveRequestRepository;
+import com.school.dolphin.academic.entity.ClassSection;
+import com.school.dolphin.academic.repository.ClassSectionRepository;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.school.dolphin.common.exception.BusinessRuleViolationException;
+import com.school.dolphin.common.exception.ResourceNotFoundException;
 import com.school.dolphin.timetable.entity.LessonOccurrence;
 import com.school.dolphin.timetable.entity.LessonOccurrenceStatus;
 import com.school.dolphin.timetable.entity.ScheduledLesson;
@@ -34,12 +37,16 @@ public class LessonOccurrenceService {
     private final LessonOccurrenceRepository occurrenceRepository;
     private final StaffLeaveRequestRepository staffLeaveRequestRepository;
     private final OrganizationScopeAuthorization organizationScopeAuthorization;
+    private final ClassSectionRepository sectionRepository;
 
     @Transactional
     public int generateForSection(
             UUID sectionId,
             LocalDate startDate,
-            LocalDate endDate) {
+            LocalDate endDate,
+            Authentication authentication) {
+
+        requireSectionInstitutionAccess(authentication, sectionId);
 
         if (startDate == null || endDate == null
                 || endDate.isBefore(startDate)) {
@@ -111,12 +118,22 @@ public class LessonOccurrenceService {
     public List<LessonOccurrenceResponse> getSectionOccurrences(
             UUID sectionId,
             LocalDate startDate,
-            LocalDate endDate) {
+            LocalDate endDate,
+            Authentication authentication) {
+
+        requireSectionInstitutionAccess(authentication, sectionId);
 
         if (startDate == null || endDate == null
                 || endDate.isBefore(startDate)) {
             throw new BusinessRuleViolationException(
                     "A valid occurrence query date range is required");
+        }
+
+        long days = ChronoUnit.DAYS.between(startDate, endDate) + 1;
+
+        if (days > MAX_GENERATION_DAYS) {
+            throw new BusinessRuleViolationException(
+                    "The occurrence query range cannot exceed 366 days");
         }
 
         return occurrenceRepository
@@ -201,6 +218,26 @@ public class LessonOccurrenceService {
                         ? null
                         : occurrence.getSubstituteStaffAssignment().getId()
         );
+    }
+
+    private void requireSectionInstitutionAccess(
+            Authentication authentication,
+            UUID sectionId
+    ) {
+        ClassSection section = sectionRepository.findById(sectionId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Section not found"));
+
+        UUID institutionId = section.getSchoolClass()
+                .getAcademicYear()
+                .getInstitution()
+                .getId();
+
+        if (!organizationScopeAuthorization.canAccessInstitution(
+                authentication, institutionId)) {
+            throw new AccessDeniedException(
+                    "You do not have access to this institution");
+        }
     }
 }
 

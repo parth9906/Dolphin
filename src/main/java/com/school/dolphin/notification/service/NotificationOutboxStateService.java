@@ -54,4 +54,13 @@ public class NotificationOutboxStateService {
 
         outboxRepository.save(event);
     }
+
+    @Transactional
+    public void markDead(UUID eventId, String error) {
+        NotificationOutbox event = outboxRepository.findById(eventId)
+                .orElseThrow();
+
+        event.markDead(OffsetDateTime.now(), error);
+        outboxRepository.save(event);
+    }
 }

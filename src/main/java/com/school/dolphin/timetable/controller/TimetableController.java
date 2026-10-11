@@ -126,12 +126,11 @@ public class TimetableController {
             @Valid @RequestBody GenerateLessonOccurrencesRequest request,
             Authentication authentication) {
 
-        // Verify the caller can access the institution that owns request.sectionId()
-        // using your existing organization-scope authorization.
         return lessonOccurrenceService.generateForSection(
                 request.sectionId(),
                 request.startDate(),
-                request.endDate());
+                request.endDate(),
+                authentication);
     }
 
     @GetMapping("/occurrences")
@@ -146,9 +145,8 @@ public class TimetableController {
             LocalDate endDate,
             Authentication authentication) {
 
-        // Perform the same institution-scope authorization before reading.
         return lessonOccurrenceService.getSectionOccurrences(
-                sectionId, startDate, endDate);
+                sectionId, startDate, endDate, authentication);
     }
 
     @PostMapping("/occurrences/{occurrenceId}/substitute")

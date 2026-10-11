@@ -205,10 +205,7 @@ AttendanceAlert: OPEN --acknowledge--> ACKNOWLEDGED --resolve--> RESOLVED
 
 ## J. Open issues and implementation gaps
 
-- `attendance/dto/Solution.java` is a stray coding-challenge class (a trie
-  "displayContacts" helper) committed into the DTO package. It is unused by the
-  application and should be removed from production source.
-- Analytics endpoints return full lists with no pagination and no upper bound on
-  the date range; a very large range can be expensive.
+- Analytics endpoints return full (non-paginated) lists; the query date range is
+  capped at 366 days (`validateAnalyticsRange`).
 - Alert status is stored as a free string rather than an enum.
 - Daily mark accepts up to 500 records per call; no idempotency key.

@@ -6,6 +6,7 @@ import java.util.UUID;
 
 public record GuardianInvitationResponse(
         UUID invitationId,
+        String token,
         String email,
         OffsetDateTime expiresAt
 ) {}

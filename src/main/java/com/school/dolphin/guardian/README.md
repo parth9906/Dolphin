@@ -28,7 +28,9 @@ Principal classes: `controller/{GuardianController,GuardianInvitationController}
 - Authentication: bearer for all except `POST /api/v1/guardian-invitations/accept`
   (public).
 - Scope: institution scope for guardian CRUD/link.
-- Invitation tokens are hashed at rest and never returned by the API.
+- Invitation tokens are hashed at rest. The raw token is returned **once** by
+  the create-invitation endpoint (Option A: manual delivery) and is never
+  returned or logged again.
 
 ## C. Endpoint inventory
 
@@ -84,10 +86,13 @@ Response `204`. Errors `403`, `404`.
 
 `CreateGuardianInvitationRequest`: `email` (required, valid, <= 255).
 Response `201` (`GuardianInvitationResponse`):
-`{ invitationId, email, expiresAt }`. **The raw token is not returned**; it is
-published as `GuardianInvitationCreatedEvent` for delivery. Invitation expires
-after `INVITATION_VALIDITY_HOURS`; existing pending invitations for the guardian
-are revoked.
+`{ invitationId, token, email, expiresAt }`. The `token` is the raw acceptance
+secret and is returned **once**, only to a caller holding `GUARDIAN_INVITE`, so
+it can be delivered to the guardian out of band (Option A: manual delivery). It
+is stored only as a hash, is single-use, and expires after
+`INVITATION_VALIDITY_HOURS` (24). Creating an invitation revokes any earlier
+pending invitation for the same guardian, so at most one valid token exists at a
+time.
 
 ### POST /api/v1/guardian-invitations/accept
 
@@ -140,13 +145,13 @@ GuardianInvitation: pending --accept--> accepted
 
 ## J. Open issues and implementation gaps
 
-- **Broken invitation delivery (important):** `GuardianInvitationCreatedEvent`
-  is published by `GuardianInvitationService`, but **no listener exists anywhere
-  in the codebase** (`grep` for `@EventListener`/`@TransactionalEventListener`
-  returns nothing). Because the API also never returns the raw token, a guardian
-  can never receive the token, so `POST /guardian-invitations/accept` is
-  effectively unreachable in V1. A notification/outbox listener (or returning
-  the token to the caller) is required.
+- **Resolved (was: broken invitation delivery).** Delivery is now manual
+  (Option A): `POST /guardian-invitations/{guardianId}` returns the raw `token`
+  once to the authorised caller, who delivers it out of band. The token stays
+  hash-only at rest, single-use and 24h-expiring, and acceptance creates the
+  guardian account and relationship. `GuardianInvitationCreatedEvent` is still
+  published but currently has **no listener**; it is retained only as a possible
+  future email/outbox extension point and is **not** part of V1 delivery.
 - No endpoint to list/revoke invitations.
 - No email-change/`email` ownership verification beyond the token.
 - No guardian self-service profile updates.
