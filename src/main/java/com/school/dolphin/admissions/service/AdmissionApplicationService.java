@@ -8,8 +8,10 @@ import com.school.dolphin.academic.service.AcademicStructureService;
 import com.school.dolphin.academic.repository.ClassSectionRepository;
 import com.school.dolphin.academic.repository.SchoolClassRepository;
 import com.school.dolphin.admissions.dto.AdmissionApplicationResponse;
+import com.school.dolphin.admissions.dto.AdmissionApplicationSummaryResponse;
 import com.school.dolphin.admissions.dto.CreateAdmissionApplicationRequest;
 import com.school.dolphin.admissions.dto.EnrollAdmissionApplicationRequest;
+import com.school.dolphin.admissions.dto.UpdateAdmissionApplicationRequest;
 import com.school.dolphin.admissions.dto.UpdateAdmissionApplicationStatusRequest;
 import com.school.dolphin.admissions.entity.AdmissionApplication;
 import com.school.dolphin.admissions.entity.AdmissionApplicationStatus;
@@ -35,6 +37,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -196,6 +199,45 @@ public class AdmissionApplicationService {
     }
 
     @Transactional
+    public AdmissionApplicationResponse update(
+            UUID applicationId,
+            UpdateAdmissionApplicationRequest request,
+            Authentication authentication
+    ) {
+        AdmissionApplication application = admissionApplicationRepository
+                .findById(applicationId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Admission application not found"));
+
+        requireInstitutionAccess(
+                authentication, application.getInstitution().getId());
+
+        if (application.getStatus() != AdmissionApplicationStatus.APPLIED
+                && application.getStatus()
+                != AdmissionApplicationStatus.UNDER_REVIEW) {
+            throw new BusinessRuleViolationException(
+                    "Only APPLIED or UNDER_REVIEW applications can be edited");
+        }
+
+        Campus campus = resolveCampus(
+                request.campusId(), application.getInstitution().getId());
+
+        SchoolClass applyingClass = requireApplyingClass(
+                request.applyingClassId(),
+                application.getInstitution().getId());
+
+        application.setCampus(campus);
+        application.setApplyingClass(applyingClass);
+        application.setParentName(normalize(request.parentName()));
+        application.setParentPhone(normalize(request.parentPhone()));
+        application.setParentEmail(normalize(request.parentEmail()));
+        application.setNotes(normalize(request.notes()));
+
+        return toResponse(admissionApplicationRepository.save(application));
+    }
+
+    @Transactional
     public AdmissionApplicationResponse enroll(
             UUID applicationId,
             EnrollAdmissionApplicationRequest request,
@@ -296,6 +338,48 @@ public class AdmissionApplicationService {
                         toDate,
                         pageable)
                 .map(this::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public AdmissionApplicationSummaryResponse summary(
+            UUID institutionId,
+            UUID campusId,
+            LocalDate fromDate,
+            LocalDate toDate,
+            Authentication authentication
+    ) {
+        if (fromDate != null && toDate != null && fromDate.isAfter(toDate)) {
+            throw new BusinessRuleViolationException(
+                    "fromDate must not be after toDate");
+        }
+
+        requireInstitutionAccess(authentication, institutionId);
+
+        if (campusId != null) {
+            requireCampusInInstitution(campusId, institutionId);
+        }
+
+        Map<AdmissionApplicationStatus, Long> counts =
+                new EnumMap<>(AdmissionApplicationStatus.class);
+
+        for (AdmissionApplicationStatus status
+                : AdmissionApplicationStatus.values()) {
+            counts.put(status, 0L);
+        }
+
+        admissionApplicationRepository
+                .countByStatus(institutionId, campusId, fromDate, toDate)
+                .forEach(projection ->
+                        counts.put(projection.getStatus(), projection.getCnt()));
+
+        return new AdmissionApplicationSummaryResponse(
+                counts.get(AdmissionApplicationStatus.APPLIED),
+                counts.get(AdmissionApplicationStatus.UNDER_REVIEW),
+                counts.get(AdmissionApplicationStatus.ACCEPTED),
+                counts.get(AdmissionApplicationStatus.REJECTED),
+                counts.get(AdmissionApplicationStatus.WAITLISTED),
+                counts.get(AdmissionApplicationStatus.ENROLLED)
+        );
     }
 
     private void requireNoActiveDuplicate(

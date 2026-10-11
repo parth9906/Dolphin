@@ -1,8 +1,10 @@
 package com.school.dolphin.admissions.controller;
 
 import com.school.dolphin.admissions.dto.AdmissionApplicationResponse;
+import com.school.dolphin.admissions.dto.AdmissionApplicationSummaryResponse;
 import com.school.dolphin.admissions.dto.CreateAdmissionApplicationRequest;
 import com.school.dolphin.admissions.dto.EnrollAdmissionApplicationRequest;
+import com.school.dolphin.admissions.dto.UpdateAdmissionApplicationRequest;
 import com.school.dolphin.admissions.dto.UpdateAdmissionApplicationStatusRequest;
 import com.school.dolphin.admissions.entity.AdmissionApplicationStatus;
 import com.school.dolphin.admissions.service.AdmissionApplicationService;
@@ -59,6 +61,25 @@ public class AdmissionApplicationController {
                 authentication);
     }
 
+    @GetMapping("/summary")
+    @PreAuthorize("hasAuthority('ADMISSION_APPLICATION_READ')")
+    public AdmissionApplicationSummaryResponse summary(
+            @RequestParam UUID institutionId,
+            @RequestParam(required = false) UUID campusId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+            Authentication authentication
+    ) {
+        return admissionApplicationService.summary(
+                institutionId,
+                campusId,
+                fromDate,
+                toDate,
+                authentication);
+    }
+
     @GetMapping("/{applicationId}")
     @PreAuthorize("hasAuthority('ADMISSION_APPLICATION_READ')")
     public AdmissionApplicationResponse getById(
@@ -77,6 +98,17 @@ public class AdmissionApplicationController {
             Authentication authentication
     ) {
         return admissionApplicationService.updateStatus(
+                applicationId, request, authentication);
+    }
+
+    @PutMapping("/{applicationId}")
+    @PreAuthorize("hasAuthority('ADMISSION_APPLICATION_UPDATE')")
+    public AdmissionApplicationResponse update(
+            @PathVariable UUID applicationId,
+            @Valid @RequestBody UpdateAdmissionApplicationRequest request,
+            Authentication authentication
+    ) {
+        return admissionApplicationService.update(
                 applicationId, request, authentication);
     }
 

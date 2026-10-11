@@ -41,4 +41,27 @@ public interface AdmissionApplicationRepository
             @Param("toDate") LocalDate toDate,
             Pageable pageable
     );
+
+    @Query("""
+        SELECT a.status AS status, COUNT(a) AS cnt
+        FROM AdmissionApplication a
+        LEFT JOIN a.campus c
+        WHERE a.institution.id = :institutionId
+          AND (:campusId IS NULL OR c.id = :campusId)
+          AND (:fromDate IS NULL OR a.applicationDate >= :fromDate)
+          AND (:toDate IS NULL OR a.applicationDate <= :toDate)
+        GROUP BY a.status
+        """)
+    List<StatusCountProjection> countByStatus(
+            @Param("institutionId") UUID institutionId,
+            @Param("campusId") UUID campusId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate
+    );
+
+    interface StatusCountProjection {
+        AdmissionApplicationStatus getStatus();
+
+        long getCnt();
+    }
 }
