@@ -1,12 +1,15 @@
 package com.school.dolphin.common.exception;
 
 import com.school.dolphin.common.response.ErrorResponse;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.OffsetDateTime;
@@ -118,5 +121,23 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
+    }
+
+    @ExceptionHandler({
+            OptimisticLockException.class,
+            OptimisticLockingFailureException.class
+    })
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleOptimisticLockingFailure(
+            Exception exception,
+            HttpServletRequest request) {
+
+        return new ErrorResponse(
+                OffsetDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                "CONCURRENT_MODIFICATION",
+                "This leave request was modified by another user. Please refresh and try again.",
+                request.getRequestURI()
+        );
     }
 }

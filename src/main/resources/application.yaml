@@ -5,7 +5,6 @@ spring:
     url: jdbc:postgresql://localhost:5432/dolphin
     username: springuser
     password: springpassword
-
   jpa:
     hibernate:
       ddl-auto: none
@@ -24,3 +23,7 @@ dolphin:
       secret: ${JWT_SECRET:n8UDq4vd3br1c0JB5frADb5auzu1/WqXpMGQge94OVE=}
       expiration-ms: 900000
 
+app:
+  notification:
+    outbox:
+      poll-delay-ms: 5000
