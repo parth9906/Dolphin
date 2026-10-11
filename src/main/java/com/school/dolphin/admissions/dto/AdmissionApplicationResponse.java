@@ -22,6 +22,7 @@ public record AdmissionApplicationResponse(
         String notes,
         LocalDate applicationDate,
         AdmissionApplicationStatus status,
+        UUID enrolledStudentId,
         UUID createdByUserId,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt

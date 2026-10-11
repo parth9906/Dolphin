@@ -4,6 +4,7 @@ import com.school.dolphin.academic.entity.SchoolClass;
 import com.school.dolphin.identity.entity.UserAccount;
 import com.school.dolphin.organization.entity.Campus;
 import com.school.dolphin.organization.entity.Institution;
+import com.school.dolphin.student.entity.Student;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,6 +31,10 @@ public class AdmissionApplication {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "campus_id")
     private Campus campus;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "enrolled_student_id")
+    private Student enrolledStudent;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "applying_class_id", nullable = false)

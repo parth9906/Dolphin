@@ -2,6 +2,8 @@ package com.school.dolphin.admissions.controller;
 
 import com.school.dolphin.admissions.dto.AdmissionApplicationResponse;
 import com.school.dolphin.admissions.dto.CreateAdmissionApplicationRequest;
+import com.school.dolphin.admissions.dto.EnrollAdmissionApplicationRequest;
+import com.school.dolphin.admissions.dto.UpdateAdmissionApplicationStatusRequest;
 import com.school.dolphin.admissions.entity.AdmissionApplicationStatus;
 import com.school.dolphin.admissions.service.AdmissionApplicationService;
 import jakarta.validation.Valid;
@@ -65,5 +67,27 @@ public class AdmissionApplicationController {
     ) {
         return admissionApplicationService.getById(
                 applicationId, authentication);
+    }
+
+    @PatchMapping("/{applicationId}/status")
+    @PreAuthorize("hasAuthority('ADMISSION_APPLICATION_UPDATE')")
+    public AdmissionApplicationResponse updateStatus(
+            @PathVariable UUID applicationId,
+            @Valid @RequestBody UpdateAdmissionApplicationStatusRequest request,
+            Authentication authentication
+    ) {
+        return admissionApplicationService.updateStatus(
+                applicationId, request, authentication);
+    }
+
+    @PostMapping("/{applicationId}/enroll")
+    @PreAuthorize("hasAuthority('ADMISSION_APPLICATION_ENROLL')")
+    public AdmissionApplicationResponse enroll(
+            @PathVariable UUID applicationId,
+            @Valid @RequestBody EnrollAdmissionApplicationRequest request,
+            Authentication authentication
+    ) {
+        return admissionApplicationService.enroll(
+                applicationId, request, authentication);
     }
 }

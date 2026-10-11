@@ -2,9 +2,15 @@ package com.school.dolphin.admissions.service;
 
 import com.school.dolphin.academic.entity.AcademicYearStatus;
 import com.school.dolphin.academic.entity.SchoolClass;
+import com.school.dolphin.academic.entity.ClassSection;
+import com.school.dolphin.academic.dto.EnrollStudentRequest;
+import com.school.dolphin.academic.service.AcademicStructureService;
+import com.school.dolphin.academic.repository.ClassSectionRepository;
 import com.school.dolphin.academic.repository.SchoolClassRepository;
 import com.school.dolphin.admissions.dto.AdmissionApplicationResponse;
 import com.school.dolphin.admissions.dto.CreateAdmissionApplicationRequest;
+import com.school.dolphin.admissions.dto.EnrollAdmissionApplicationRequest;
+import com.school.dolphin.admissions.dto.UpdateAdmissionApplicationStatusRequest;
 import com.school.dolphin.admissions.entity.AdmissionApplication;
 import com.school.dolphin.admissions.entity.AdmissionApplicationStatus;
 import com.school.dolphin.admissions.repository.AdmissionApplicationRepository;
@@ -18,6 +24,8 @@ import com.school.dolphin.organization.entity.Campus;
 import com.school.dolphin.organization.entity.Institution;
 import com.school.dolphin.organization.repository.CampusRepository;
 import com.school.dolphin.organization.repository.InstitutionRepository;
+import com.school.dolphin.student.entity.Student;
+import com.school.dolphin.student.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,6 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -41,10 +51,32 @@ public class AdmissionApplicationService {
                     AdmissionApplicationStatus.APPLIED,
                     AdmissionApplicationStatus.UNDER_REVIEW);
 
+    private static final Map<AdmissionApplicationStatus,
+            Set<AdmissionApplicationStatus>> ALLOWED_TRANSITIONS = Map.of(
+                    AdmissionApplicationStatus.APPLIED, Set.of(
+                            AdmissionApplicationStatus.UNDER_REVIEW,
+                            AdmissionApplicationStatus.ACCEPTED,
+                            AdmissionApplicationStatus.REJECTED,
+                            AdmissionApplicationStatus.WAITLISTED),
+                    AdmissionApplicationStatus.UNDER_REVIEW, Set.of(
+                            AdmissionApplicationStatus.ACCEPTED,
+                            AdmissionApplicationStatus.REJECTED,
+                            AdmissionApplicationStatus.WAITLISTED),
+                    AdmissionApplicationStatus.WAITLISTED, Set.of(
+                            AdmissionApplicationStatus.ACCEPTED,
+                            AdmissionApplicationStatus.REJECTED),
+                    AdmissionApplicationStatus.ACCEPTED, Set.of(),
+                    AdmissionApplicationStatus.REJECTED, Set.of(),
+                    AdmissionApplicationStatus.ENROLLED, Set.of()
+            );
+
     private final AdmissionApplicationRepository admissionApplicationRepository;
     private final InstitutionRepository institutionRepository;
     private final CampusRepository campusRepository;
     private final SchoolClassRepository schoolClassRepository;
+    private final ClassSectionRepository classSectionRepository;
+    private final StudentRepository studentRepository;
+    private final AcademicStructureService academicStructureService;
     private final OrganizationScopeAuthorization scopeAuthorization;
     private final AuthenticatedUserResolver authenticatedUserResolver;
 
@@ -125,6 +157,108 @@ public class AdmissionApplicationService {
                 authentication, application.getInstitution().getId());
 
         return toResponse(application);
+    }
+
+    @Transactional
+    public AdmissionApplicationResponse updateStatus(
+            UUID applicationId,
+            UpdateAdmissionApplicationStatusRequest request,
+            Authentication authentication
+    ) {
+        AdmissionApplication application = admissionApplicationRepository
+                .findById(applicationId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Admission application not found"));
+
+        requireInstitutionAccess(
+                authentication, application.getInstitution().getId());
+
+        AdmissionApplicationStatus current = application.getStatus();
+        AdmissionApplicationStatus target = request.status();
+
+        if (current == target) {
+            throw new BusinessRuleViolationException(
+                    "Application is already in status " + target);
+        }
+
+        if (!ALLOWED_TRANSITIONS
+                .getOrDefault(current, Set.of())
+                .contains(target)) {
+            throw new BusinessRuleViolationException(
+                    "Cannot transition application from " + current
+                            + " to " + target);
+        }
+
+        application.setStatus(target);
+
+        return toResponse(admissionApplicationRepository.save(application));
+    }
+
+    @Transactional
+    public AdmissionApplicationResponse enroll(
+            UUID applicationId,
+            EnrollAdmissionApplicationRequest request,
+            Authentication authentication
+    ) {
+        AdmissionApplication application = admissionApplicationRepository
+                .findById(applicationId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Admission application not found"));
+
+        requireInstitutionAccess(
+                authentication, application.getInstitution().getId());
+
+        if (application.getStatus()
+                != AdmissionApplicationStatus.ACCEPTED) {
+            throw new BusinessRuleViolationException(
+                    "Only accepted applications can be enrolled");
+        }
+
+        String admissionNumber = request.admissionNumber().trim();
+
+        if (studentRepository.existsByInstitution_IdAndAdmissionNumber(
+                application.getInstitution().getId(),
+                admissionNumber)) {
+            throw new DuplicateResourceException(
+                    "Admission number already exists in this institution");
+        }
+
+        ClassSection section = classSectionRepository
+                .findById(request.sectionId())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Section not found"));
+
+        if (!section.getSchoolClass().getId()
+                .equals(application.getApplyingClass().getId())) {
+            throw new BusinessRuleViolationException(
+                    "Section does not belong to the application's class");
+        }
+
+        Student student = Student.builder()
+                .institution(application.getInstitution())
+                .campus(application.getCampus())
+                .admissionNumber(admissionNumber)
+                .firstName(application.getApplicantFirstName())
+                .lastName(application.getApplicantLastName())
+                .dateOfBirth(application.getApplicantDateOfBirth())
+                .active(true)
+                .build();
+
+        Student savedStudent = studentRepository.save(student);
+
+        academicStructureService.enrollStudent(
+                new EnrollStudentRequest(
+                        savedStudent.getId(),
+                        request.sectionId(),
+                        request.startDate()),
+                authentication);
+
+        application.setEnrolledStudent(savedStudent);
+        application.setStatus(AdmissionApplicationStatus.ENROLLED);
+
+        return toResponse(admissionApplicationRepository.save(application));
     }
 
     @Transactional(readOnly = true)
@@ -286,6 +420,8 @@ public class AdmissionApplicationService {
                 application.getNotes(),
                 application.getApplicationDate(),
                 application.getStatus(),
+                application.getEnrolledStudent() == null
+                        ? null : application.getEnrolledStudent().getId(),
                 application.getCreatedBy().getId(),
                 application.getCreatedAt(),
                 application.getUpdatedAt()
