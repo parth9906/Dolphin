@@ -19,7 +19,29 @@ public class JwtService {
     private final long expirationMs;
 
     public JwtService(JwtProperties properties) {
-        byte[] keyBytes = Decoders.BASE64.decode(properties.secret());
+        String secret = properties.secret();
+
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException(
+                    "JWT_SECRET is not configured. Set the JWT_SECRET "
+                            + "environment variable to a base64-encoded "
+                            + "256-bit (or stronger) key.");
+        }
+
+        byte[] keyBytes;
+
+        try {
+            keyBytes = Decoders.BASE64.decode(secret);
+        } catch (RuntimeException exception) {
+            throw new IllegalStateException(
+                    "JWT_SECRET must be valid base64.", exception);
+        }
+
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException(
+                    "JWT_SECRET must decode to at least 32 bytes "
+                            + "(256 bits).");
+        }
 
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
         this.expirationMs = properties.expirationMs();

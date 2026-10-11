@@ -5,6 +5,7 @@ import jakarta.persistence.OptimisticLockException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.time.OffsetDateTime;
@@ -32,6 +34,57 @@ public class GlobalExceptionHandler {
                         HttpStatus.FORBIDDEN.value(),
                         "ACCESS_DENIED",
                         exception.getMessage(),
+                        request.getRequestURI()
+                ));
+    }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidCredentials(
+            InvalidCredentialsException exception,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponse(
+                        OffsetDateTime.now(),
+                        HttpStatus.UNAUTHORIZED.value(),
+                        "INVALID_CREDENTIALS",
+                        exception.getMessage(),
+                        request.getRequestURI()
+                ));
+    }
+
+    @ExceptionHandler(TooManyLoginAttemptsException.class)
+    public ResponseEntity<ErrorResponse> handleTooManyLoginAttempts(
+            TooManyLoginAttemptsException exception,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(new ErrorResponse(
+                        OffsetDateTime.now(),
+                        HttpStatus.TOO_MANY_REQUESTS.value(),
+                        "TOO_MANY_LOGIN_ATTEMPTS",
+                        exception.getMessage(),
+                        request.getRequestURI()
+                ));
+    }
+
+    @ExceptionHandler({
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class
+    })
+    public ResponseEntity<ErrorResponse> handleMalformedRequest(
+            Exception exception,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(
+                        OffsetDateTime.now(),
+                        HttpStatus.BAD_REQUEST.value(),
+                        "MALFORMED_REQUEST",
+                        "The request body or parameters are malformed.",
                         request.getRequestURI()
                 ));
     }
@@ -170,7 +223,8 @@ public class GlobalExceptionHandler {
                 OffsetDateTime.now(),
                 HttpStatus.CONFLICT.value(),
                 "CONCURRENT_MODIFICATION",
-                "This leave request was modified by another user. Please refresh and try again.",
+                "This record was modified by another request. "
+                        + "Please refresh and try again.",
                 request.getRequestURI()
         );
     }

@@ -80,7 +80,7 @@ public class HostelRoomService {
             UpdateHostelRoomRequest request,
             Authentication authentication
     ) {
-        HostelRoom room = requireRoom(hostelId, roomId);
+        HostelRoom room = requireRoomForUpdate(hostelId, roomId);
 
         requireInstitutionAccess(
                 authentication, room.getHostel().getInstitution().getId());
@@ -125,7 +125,7 @@ public class HostelRoomService {
             UUID roomId,
             Authentication authentication
     ) {
-        HostelRoom room = requireRoom(hostelId, roomId);
+        HostelRoom room = requireRoomForUpdate(hostelId, roomId);
 
         requireInstitutionAccess(
                 authentication, room.getHostel().getInstitution().getId());
@@ -236,6 +236,24 @@ public class HostelRoomService {
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "Hostel room not found"));
+    }
+
+    /**
+     * Loads the room under a pessimistic write lock so a concurrent allocation
+     * cannot slip past the capacity/occupancy checks in update/deactivate.
+     */
+    private HostelRoom requireRoomForUpdate(UUID hostelId, UUID roomId) {
+        HostelRoom room = hostelRoomRepository
+                .findByIdForUpdate(roomId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Hostel room not found"));
+
+        if (!room.getHostel().getId().equals(hostelId)) {
+            throw new ResourceNotFoundException("Hostel room not found");
+        }
+
+        return room;
     }
 
     private void ensureVersion(HostelRoom room, Long version) {

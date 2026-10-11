@@ -25,7 +25,8 @@ public class MessMealController {
     private final MessMealService messMealService;
 
     @PostMapping
-    @PreAuthorize("hasAuthority('MESS_MEAL_CREATE')")
+    @PreAuthorize("hasAuthority('MESS_MEAL_CREATE') "
+            + "and hasAuthority('INVENTORY_STOCK_ISSUE')")
     public MessMealResponse create(
             @Valid @RequestBody CreateMessMealRequest request,
             Authentication authentication

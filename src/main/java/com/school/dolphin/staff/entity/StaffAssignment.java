@@ -59,6 +59,10 @@ public class StaffAssignment {
     @Column(nullable = false, length = 20)
     private StaffAssignmentStatus status = StaffAssignmentStatus.ACTIVE;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 

@@ -10,15 +10,9 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(
-        name = "hostel",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_hostel_institution_code",
-                        columnNames = {"institution_id", "code"}
-                )
-        }
-)
+// Uniqueness of (institution_id, code) is case-insensitive and enforced by a
+// functional unique index in the database (see V73 migration).
+@Table(name = "hostel")
 @Getter
 @Setter
 @NoArgsConstructor

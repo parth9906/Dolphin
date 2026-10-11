@@ -5,6 +5,11 @@ spring:
     url: jdbc:postgresql://localhost:5432/dolphin
     username: springuser
     password: springpassword
+  data:
+    web:
+      pageable:
+        max-page-size: 100
+        default-page-size: 20
   jpa:
     hibernate:
       ddl-auto: none
@@ -20,7 +25,9 @@ logging:
 dolphin:
   security:
     jwt:
-      secret: ${JWT_SECRET:n8UDq4vd3br1c0JB5frADb5auzu1/WqXpMGQge94OVE=}
+      # No default: the application fails fast (see JwtService) if JWT_SECRET is
+      # not supplied, so a committed key can never sign production tokens.
+      secret: ${JWT_SECRET:}
       expiration-ms: 900000
 
 app:

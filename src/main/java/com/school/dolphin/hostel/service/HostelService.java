@@ -8,6 +8,8 @@ import com.school.dolphin.hostel.dto.CreateHostelRequest;
 import com.school.dolphin.hostel.dto.HostelResponse;
 import com.school.dolphin.hostel.dto.UpdateHostelRequest;
 import com.school.dolphin.hostel.entity.Hostel;
+import com.school.dolphin.hostel.entity.HostelAllocationStatus;
+import com.school.dolphin.hostel.repository.HostelAllocationRepository;
 import com.school.dolphin.hostel.repository.HostelRepository;
 import com.school.dolphin.identity.entity.UserAccount;
 import com.school.dolphin.identity.security.AuthenticatedUserResolver;
@@ -33,6 +35,7 @@ public class HostelService {
     private static final int MAX_PAGE_SIZE = 100;
 
     private final HostelRepository hostelRepository;
+    private final HostelAllocationRepository hostelAllocationRepository;
     private final InstitutionRepository institutionRepository;
     private final CampusRepository campusRepository;
     private final OrganizationScopeAuthorization scopeAuthorization;
@@ -123,6 +126,15 @@ public class HostelService {
         if (!hostel.isActive()) {
             throw new BusinessRuleViolationException(
                     "Hostel is already inactive");
+        }
+
+        long activeAllocations = hostelAllocationRepository
+                .countByRoom_Hostel_IdAndStatus(
+                        hostelId, HostelAllocationStatus.ACTIVE);
+
+        if (activeAllocations > 0) {
+            throw new BusinessRuleViolationException(
+                    "Cannot deactivate a hostel with active allocations");
         }
 
         hostel.setActive(false);

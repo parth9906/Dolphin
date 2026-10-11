@@ -28,6 +28,11 @@ public interface HostelAllocationRepository
 
     long countByRoom_IdAndStatus(UUID roomId, HostelAllocationStatus status);
 
+    long countByRoom_Hostel_IdAndStatus(
+            UUID hostelId,
+            HostelAllocationStatus status
+    );
+
     @Query("""
         SELECT a.room.id AS roomId, COUNT(a) AS occupied
         FROM HostelAllocation a

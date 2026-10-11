@@ -47,6 +47,7 @@ public class InventoryStockService {
     ) {
         InventoryItem item = requireActiveItem(itemId);
         requireInstitutionAccess(authentication, item.getInstitution().getId());
+        requireNotFuture(request.occurredAt());
 
         UserAccount actor =
                 authenticatedUserResolver.requireUserAccount(authentication);
@@ -71,6 +72,7 @@ public class InventoryStockService {
     ) {
         InventoryItem item = requireActiveItem(itemId);
         requireInstitutionAccess(authentication, item.getInstitution().getId());
+        requireNotFuture(request.occurredAt());
 
         UserAccount actor =
                 authenticatedUserResolver.requireUserAccount(authentication);
@@ -95,6 +97,7 @@ public class InventoryStockService {
     ) {
         InventoryItem item = requireActiveItem(itemId);
         requireInstitutionAccess(authentication, item.getInstitution().getId());
+        requireNotFuture(request.occurredAt());
 
         UserAccount actor =
                 authenticatedUserResolver.requireUserAccount(authentication);
@@ -119,6 +122,7 @@ public class InventoryStockService {
     ) {
         InventoryItem item = requireActiveItem(itemId);
         requireInstitutionAccess(authentication, item.getInstitution().getId());
+        requireNotFuture(request.occurredAt());
 
         UserAccount actor =
                 authenticatedUserResolver.requireUserAccount(authentication);
@@ -351,5 +355,13 @@ public class InventoryStockService {
 
     private String normalize(String value) {
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private void requireNotFuture(OffsetDateTime occurredAt) {
+        if (occurredAt != null
+                && occurredAt.isAfter(OffsetDateTime.now())) {
+            throw new BusinessRuleViolationException(
+                    "Stock movement time cannot be in the future");
+        }
     }
 }

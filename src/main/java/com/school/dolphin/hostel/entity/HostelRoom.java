@@ -7,15 +7,9 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(
-        name = "hostel_room",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_hostel_room_number",
-                        columnNames = {"hostel_id", "room_number"}
-                )
-        }
-)
+// Uniqueness of (hostel_id, room_number) is case-insensitive and enforced by a
+// functional unique index in the database (see V73 migration).
+@Table(name = "hostel_room")
 @Getter
 @Setter
 @NoArgsConstructor

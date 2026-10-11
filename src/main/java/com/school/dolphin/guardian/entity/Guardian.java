@@ -50,6 +50,10 @@ public class Guardian {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @PrePersist
     void onCreate() {
         if (id == null) id = UUID.randomUUID();

@@ -137,6 +137,14 @@ public class InventoryItemService {
                     "Inventory item is already inactive");
         }
 
+        if (item.getQuantityOnHand() != null
+                && item.getQuantityOnHand().signum() > 0) {
+            throw new BusinessRuleViolationException(
+                    "Cannot deactivate an inventory item while stock is on "
+                            + "hand; issue or write off the remaining stock "
+                            + "first");
+        }
+
         item.setActive(false);
 
         return InventoryItemResponse.from(

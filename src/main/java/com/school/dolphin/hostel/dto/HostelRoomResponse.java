@@ -29,7 +29,7 @@ public record HostelRoomResponse(
                 room.getRoomType(),
                 room.getCapacity(),
                 occupied,
-                room.getCapacity() - occupied,
+                Math.max(0L, room.getCapacity() - occupied),
                 room.isActive(),
                 room.getCreatedAt(),
                 room.getUpdatedAt(),
