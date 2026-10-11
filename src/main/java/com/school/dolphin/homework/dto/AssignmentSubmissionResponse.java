@@ -13,7 +13,8 @@ public record AssignmentSubmissionResponse(
         String submissionText,
         AssignmentSubmissionStatus status,
         OffsetDateTime submittedAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        Long version
 ) {
     public static AssignmentSubmissionResponse from(
             AssignmentSubmission submission
@@ -25,7 +26,8 @@ public record AssignmentSubmissionResponse(
                 submission.getSubmissionText(),
                 submission.getStatus(),
                 submission.getSubmittedAt(),
-                submission.getUpdatedAt()
+                submission.getUpdatedAt(),
+                submission.getVersion()
         );
     }
 }

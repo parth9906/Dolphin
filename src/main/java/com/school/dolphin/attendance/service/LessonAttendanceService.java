@@ -29,7 +29,7 @@ import com.school.dolphin.common.exception.BusinessRuleViolationException;
 import com.school.dolphin.common.exception.DuplicateResourceException;
 import com.school.dolphin.common.exception.ResourceNotFoundException;
 import com.school.dolphin.identity.entity.UserAccount;
-import com.school.dolphin.identity.repository.UserAccountRepository;
+import com.school.dolphin.identity.security.AuthenticatedUserResolver;
 import com.school.dolphin.student.entity.Student;
 import com.school.dolphin.timetable.entity.LessonOccurrence;
 import com.school.dolphin.timetable.entity.LessonOccurrenceStatus;
@@ -45,7 +45,7 @@ public class LessonAttendanceService {
     private final LessonAttendanceAuditRepository auditRepository;
     private final LessonOccurrenceRepository occurrenceRepository;
     private final StudentEnrollmentRepository enrollmentRepository;
-    private final UserAccountRepository userAccountRepository;
+    private final AuthenticatedUserResolver authenticatedUserResolver;
     private final OrganizationScopeAuthorization organizationScopeAuthorization;
 
     @Transactional(readOnly = true)
@@ -470,10 +470,7 @@ public class LessonAttendanceService {
 
     private UserAccount getAuthenticatedUser(
             Authentication authentication) {
-
-        return userAccountRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Authenticated user account not found"));
+        return authenticatedUserResolver.requireUserAccount(authentication);
     }
 
     private LessonAttendanceResponse toResponse(

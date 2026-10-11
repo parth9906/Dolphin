@@ -19,7 +19,8 @@ public record AssignmentResponse(
         AssignmentStatus status,
         OffsetDateTime publishedAt,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        Long version
 ) {
     public static AssignmentResponse from(Assignment assignment) {
         return new AssignmentResponse(
@@ -34,7 +35,8 @@ public record AssignmentResponse(
                 assignment.getStatus(),
                 assignment.getPublishedAt(),
                 assignment.getCreatedAt(),
-                assignment.getUpdatedAt()
+                assignment.getUpdatedAt(),
+                assignment.getVersion()
         );
     }
 }

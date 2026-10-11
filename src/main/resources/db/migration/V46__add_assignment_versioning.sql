@@ -1,0 +1,5 @@
+ALTER TABLE assignment
+    ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+
+ALTER TABLE assignment_submission
+    ADD COLUMN version BIGINT NOT NULL DEFAULT 0;

@@ -2,8 +2,10 @@
 package com.school.dolphin.homework.service;
 
 import com.school.dolphin.academic.entity.EnrollmentStatus;
-import com.school.dolphin.academic.entity.StudentEnrollment;
 import com.school.dolphin.academic.repository.StudentEnrollmentRepository;
+import com.school.dolphin.common.exception.BusinessRuleViolationException;
+import com.school.dolphin.common.exception.ResourceNotFoundException;
+import com.school.dolphin.common.exception.StaleResourceVersionException;
 import com.school.dolphin.homework.dto.AssignmentResponse;
 import com.school.dolphin.homework.dto.AssignmentSubmissionResponse;
 import com.school.dolphin.homework.dto.SubmitAssignmentRequest;
@@ -14,12 +16,10 @@ import com.school.dolphin.homework.entity.AssignmentSubmissionStatus;
 import com.school.dolphin.homework.repository.AssignmentRepository;
 import com.school.dolphin.homework.repository.AssignmentSubmissionRepository;
 import com.school.dolphin.identity.entity.UserAccount;
-import com.school.dolphin.identity.repository.UserAccountRepository;
+import com.school.dolphin.identity.security.AuthenticatedUserResolver;
 import com.school.dolphin.student.entity.Student;
 import com.school.dolphin.student.repository.StudentAccountLinkRepository;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
@@ -40,7 +40,7 @@ public class StudentAssignmentService {
     private final AssignmentSubmissionRepository submissionRepository;
     private final StudentEnrollmentRepository enrollmentRepository;
     private final StudentAccountLinkRepository studentAccountLinkRepository;
-    private final UserAccountRepository userAccountRepository;
+    private final AuthenticatedUserResolver authenticatedUserResolver;
 
     @Transactional(readOnly = true)
     public Page<AssignmentResponse> listAvailableAssignments(
@@ -86,10 +86,10 @@ public class StudentAssignmentService {
 
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() ->
-                        new EntityNotFoundException("Assignment not found"));
+                        new ResourceNotFoundException("Assignment not found"));
 
         if (assignment.getStatus() != AssignmentStatus.PUBLISHED) {
-            throw new IllegalArgumentException(
+            throw new BusinessRuleViolationException(
                     "Only published assignments can be submitted");
         }
 
@@ -97,7 +97,7 @@ public class StudentAssignmentService {
 
         String text = request.submissionText().trim();
         if (text.isEmpty()) {
-            throw new IllegalArgumentException(
+            throw new BusinessRuleViolationException(
                     "Submission text cannot be blank");
         }
 
@@ -115,8 +115,13 @@ public class StudentAssignmentService {
                 });
 
         if (submission.getStatus() == AssignmentSubmissionStatus.GRADED) {
-            throw new IllegalArgumentException(
+            throw new BusinessRuleViolationException(
                     "A graded submission cannot be resubmitted");
+        }
+
+        if (submission.getId() == null && request.version() != null) {
+            throw new BusinessRuleViolationException(
+                    "A version must not be supplied for an initial submission");
         }
 
         submission.setSubmissionText(text);
@@ -127,13 +132,14 @@ public class StudentAssignmentService {
                         : AssignmentSubmissionStatus.SUBMITTED
         );
 
-        try {
-            return AssignmentSubmissionResponse.from(
-                    submissionRepository.saveAndFlush(submission));
-        } catch (DataIntegrityViolationException ex) {
-            throw new IllegalArgumentException(
-                    "Submission conflicted with another request. Please retry.");
+        if (submission.getId() != null
+                && !submission.getVersion().equals(request.version())) {
+            throw new StaleResourceVersionException(
+                    "The submission was modified by another request. Reload it and try again.");
         }
+
+        return AssignmentSubmissionResponse.from(
+                submissionRepository.saveAndFlush(submission));
     }
 
     @Transactional(readOnly = true)
@@ -145,7 +151,7 @@ public class StudentAssignmentService {
 
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() ->
-                        new EntityNotFoundException("Assignment not found"));
+                        new ResourceNotFoundException("Assignment not found"));
 
         ensureCurrentlyEnrolled(student, assignment);
 
@@ -153,20 +159,14 @@ public class StudentAssignmentService {
                 .findByAssignment_IdAndStudent_Id(
                         assignmentId, student.getId())
                 .orElseThrow(() ->
-                        new EntityNotFoundException("Submission not found"));
+                        new ResourceNotFoundException("Submission not found"));
 
         return AssignmentSubmissionResponse.from(submission);
     }
 
     private Student getCurrentStudent(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new AccessDeniedException("Authentication is required");
-        }
-
-        UserAccount user = userAccountRepository
-                .findByUsername(authentication.getName())
-                .orElseThrow(() ->
-                        new EntityNotFoundException("Current user not found"));
+        UserAccount user = authenticatedUserResolver
+                .requireUserAccount(authentication);
 
         return studentAccountLinkRepository
                 .findByUserAccount_Id(user.getId())

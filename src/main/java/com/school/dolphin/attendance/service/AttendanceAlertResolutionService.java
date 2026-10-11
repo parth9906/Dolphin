@@ -10,7 +10,7 @@ import com.school.dolphin.attendance.repository.AttendanceAlertRepository;
 import com.school.dolphin.common.exception.BusinessRuleViolationException;
 import com.school.dolphin.common.exception.ResourceNotFoundException;
 import com.school.dolphin.identity.entity.UserAccount;
-import com.school.dolphin.identity.repository.UserAccountRepository;
+import com.school.dolphin.identity.security.AuthenticatedUserResolver;
 import com.school.dolphin.identity.security.OrganizationScopeAuthorization;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -32,7 +32,7 @@ public class AttendanceAlertResolutionService {
     private final AttendanceAlertRepository attendanceAlertRepository;
     private final OrganizationScopeAuthorization organizationScopeAuthorization;
     private final AttendanceAlertAuditRepository auditRepository;
-    private final UserAccountRepository userAccountRepository;
+    private final AuthenticatedUserResolver authenticatedUserResolver;
 
 
     @Transactional
@@ -59,11 +59,8 @@ public class AttendanceAlertResolutionService {
             );
         }
 
-        UserAccount user = userAccountRepository
-                .findByUsername(authentication.getName())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Authenticated user account not found"
-                ));
+        UserAccount user = authenticatedUserResolver
+                .requireUserAccount(authentication);
 
         alert.resolve();
 
@@ -133,11 +130,8 @@ public class AttendanceAlertResolutionService {
             );
         }
 
-        UserAccount user = userAccountRepository
-                .findByUsername(authentication.getName())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Authenticated user account not found"
-                ));
+        UserAccount user = authenticatedUserResolver
+                .requireUserAccount(authentication);
 
         // Uses the existing status-transition method on AttendanceAlert.
         alert.acknowledge();

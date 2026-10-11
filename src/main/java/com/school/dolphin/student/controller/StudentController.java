@@ -3,6 +3,9 @@ package com.school.dolphin.student.controller;
 import com.school.dolphin.student.dto.CreateStudentRequest;
 import com.school.dolphin.student.dto.StudentResponse;
 import com.school.dolphin.student.dto.UpdateStudentRequest;
+import com.school.dolphin.student.dto.LinkStudentAccountRequest;
+import com.school.dolphin.student.dto.StudentAccountLinkResponse;
+import com.school.dolphin.student.service.StudentAccountLinkService;
 import com.school.dolphin.student.service.StudentService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -22,9 +25,14 @@ import java.util.UUID;
 public class StudentController {
 
     private final StudentService studentService;
+    private final StudentAccountLinkService studentAccountLinkService;
 
-    public StudentController(StudentService studentService) {
+    public StudentController(
+            StudentService studentService,
+            StudentAccountLinkService studentAccountLinkService
+    ) {
         this.studentService = studentService;
+        this.studentAccountLinkService = studentAccountLinkService;
     }
 
     @PostMapping
@@ -86,5 +94,16 @@ public class StudentController {
             Authentication authentication
     ) {
         return studentService.deactivateStudent(id, authentication);
+    }
+
+    @PostMapping("/{id}/account-link")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAuthority('STUDENT_ACCOUNT_LINK')")
+    public StudentAccountLinkResponse linkAccount(
+            @PathVariable UUID id,
+            @Valid @RequestBody LinkStudentAccountRequest request,
+            Authentication authentication
+    ) {
+        return studentAccountLinkService.link(id, request, authentication);
     }
 }

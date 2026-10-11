@@ -10,4 +10,8 @@ public interface StudentAccountLinkRepository
         extends JpaRepository<StudentAccountLink, UUID> {
 
     Optional<StudentAccountLink> findByUserAccount_Id(UUID userAccountId);
+
+    boolean existsByStudent_Id(UUID studentId);
+
+    boolean existsByUserAccount_Id(UUID userAccountId);
 }

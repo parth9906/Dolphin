@@ -4,7 +4,7 @@ package com.school.dolphin.notification.service;
 import com.school.dolphin.common.exception.BusinessRuleViolationException;
 import com.school.dolphin.common.exception.ResourceNotFoundException;
 import com.school.dolphin.identity.entity.UserAccount;
-import com.school.dolphin.identity.repository.UserAccountRepository;
+import com.school.dolphin.identity.security.AuthenticatedUserResolver;
 import com.school.dolphin.notification.dto.NotificationResponse;
 import com.school.dolphin.notification.entity.Notification;
 import com.school.dolphin.notification.repository.NotificationRepository;
@@ -23,7 +23,7 @@ import java.util.UUID;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final UserAccountRepository userAccountRepository;
+    private final AuthenticatedUserResolver authenticatedUserResolver;
 
     @Transactional
     public boolean createIfAbsent(
@@ -168,17 +168,7 @@ public class NotificationService {
     private UserAccount getAuthenticatedUser(
             Authentication authentication
     ) {
-        if (authentication == null || authentication.getName() == null) {
-            throw new ResourceNotFoundException(
-                    "Authenticated user account not found"
-            );
-        }
-
-        return userAccountRepository
-                .findByUsername(authentication.getName())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Authenticated user account not found"
-                ));
+        return authenticatedUserResolver.requireUserAccount(authentication);
     }
 
     private NotificationResponse toResponse(Notification notification) {

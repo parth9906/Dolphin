@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface StaffMemberRepository
         extends JpaRepository<StaffMember, UUID> {
     Optional<StaffMember> findByUserAccount_Id(UUID userAccountId);
+
+    boolean existsByUserAccount_Id(UUID userAccountId);
 }

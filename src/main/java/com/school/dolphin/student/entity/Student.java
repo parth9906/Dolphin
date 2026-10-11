@@ -49,8 +49,9 @@ public class Student {
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
+    @Builder.Default
     @Column(nullable = false)
-    private boolean active;
+    private boolean active = true;
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
@@ -68,8 +69,6 @@ public class Student {
         createdAt = now;
         updatedAt = now;
 
-        // A newly created student is active by default.
-        active = true;
     }
 
     @PreUpdate

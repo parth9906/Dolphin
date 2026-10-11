@@ -4,19 +4,24 @@ import com.school.dolphin.academic.entity.ClassSection;
 import com.school.dolphin.academic.repository.ClassSectionRepository;
 import com.school.dolphin.common.exception.BusinessRuleViolationException;
 import com.school.dolphin.common.exception.ResourceNotFoundException;
+import com.school.dolphin.common.exception.StaleResourceVersionException;
 import com.school.dolphin.homework.dto.AssignmentResponse;
 import com.school.dolphin.homework.dto.CreateAssignmentRequest;
 import com.school.dolphin.homework.dto.UpdateAssignmentRequest;
+import com.school.dolphin.homework.dto.PublishAssignmentRequest;
 import com.school.dolphin.homework.entity.Assignment;
 import com.school.dolphin.homework.entity.AssignmentStatus;
 import com.school.dolphin.homework.repository.AssignmentRepository;
 import com.school.dolphin.identity.entity.UserAccount;
-import com.school.dolphin.identity.repository.UserAccountRepository;
+import com.school.dolphin.identity.security.AuthenticatedUserResolver;
 import com.school.dolphin.identity.security.OrganizationScopeAuthorization;
 import com.school.dolphin.organization.entity.Institution;
 import com.school.dolphin.organization.repository.InstitutionRepository;
 import com.school.dolphin.staff.entity.StaffMember;
 import com.school.dolphin.staff.repository.StaffMemberRepository;
+import com.school.dolphin.staff.entity.StaffAssignmentStatus;
+import com.school.dolphin.staff.entity.StaffType;
+import com.school.dolphin.timetable.repository.ScheduledLessonRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Service
@@ -36,7 +42,8 @@ public class AssignmentService {
     private final InstitutionRepository institutionRepository;
     private final ClassSectionRepository classSectionRepository;
     private final StaffMemberRepository staffMemberRepository;
-    private final UserAccountRepository userAccountRepository;
+    private final AuthenticatedUserResolver authenticatedUserResolver;
+    private final ScheduledLessonRepository scheduledLessonRepository;
     private final OrganizationScopeAuthorization scopeAuthorization;
 
     @Transactional
@@ -69,6 +76,8 @@ public class AssignmentService {
             throw new BusinessRuleViolationException(
                     "Cannot create an assignment for an inactive class");
         }
+
+        ensureStaffCanTeachSection(creator, section, institution.getId());
 
         Assignment assignment = new Assignment();
         assignment.setInstitution(institution);
@@ -129,6 +138,8 @@ public class AssignmentService {
         validateInstitutionAccess(
                 authentication, assignment.getInstitution().getId());
         ensureDraft(assignment);
+        ensureCurrentStaffCanManageAssignment(authentication, assignment);
+        ensureVersion(assignment, request.version());
 
         if (request.title() != null) {
             if (request.title().isBlank()) {
@@ -159,6 +170,7 @@ public class AssignmentService {
     @Transactional
     public AssignmentResponse publish(
             UUID assignmentId,
+            PublishAssignmentRequest request,
             Authentication authentication
     ) {
         Assignment assignment = findAssignment(assignmentId);
@@ -166,6 +178,8 @@ public class AssignmentService {
                 authentication, assignment.getInstitution().getId());
 
         ensureDraft(assignment);
+        ensureCurrentStaffCanManageAssignment(authentication, assignment);
+        ensureVersion(assignment, request.version());
 
         if (!assignment.getDueAt().isAfter(OffsetDateTime.now())) {
             throw new BusinessRuleViolationException(
@@ -222,10 +236,8 @@ public class AssignmentService {
     private StaffMember findCurrentActiveStaffMember(
             Authentication authentication
     ) {
-        UserAccount user = userAccountRepository
-                .findByUsername(authentication.getName())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Current user not found"));
+        UserAccount user = authenticatedUserResolver
+                .requireUserAccount(authentication);
 
         StaffMember staff = staffMemberRepository
                 .findByUserAccount_Id(user.getId())
@@ -241,10 +253,57 @@ public class AssignmentService {
         return staff;
     }
 
+    private void ensureCurrentStaffCanManageAssignment(
+            Authentication authentication,
+            Assignment assignment
+    ) {
+        StaffMember staff = findCurrentActiveStaffMember(authentication);
+
+        if (!staff.getId().equals(assignment.getCreatedBy().getId())) {
+            throw new AccessDeniedException(
+                    "Only the assignment creator can modify or publish it");
+        }
+
+        ensureStaffCanTeachSection(
+                staff,
+                assignment.getSection(),
+                assignment.getInstitution().getId());
+    }
+
+    private void ensureStaffCanTeachSection(
+            StaffMember staff,
+            ClassSection section,
+            UUID institutionId
+    ) {
+        LocalDate today = LocalDate.now();
+
+        boolean teachesSection = scheduledLessonRepository
+                .existsActiveTeachingAssignmentForSection(
+                                section.getId(),
+                                staff.getId(),
+                                institutionId,
+                                StaffAssignmentStatus.ACTIVE,
+                                StaffType.TEACHER,
+                                today
+                        );
+
+        if (!teachesSection) {
+            throw new AccessDeniedException(
+                    "You are not authorized to manage assignments for this section");
+        }
+    }
+
     private void ensureDraft(Assignment assignment) {
         if (assignment.getStatus() != AssignmentStatus.DRAFT) {
             throw new BusinessRuleViolationException(
                     "Only draft assignments can be modified or published");
+        }
+    }
+
+    private void ensureVersion(Assignment assignment, Long version) {
+        if (!assignment.getVersion().equals(version)) {
+            throw new StaleResourceVersionException(
+                    "The assignment was modified by another request. Reload it and try again.");
         }
     }
 }

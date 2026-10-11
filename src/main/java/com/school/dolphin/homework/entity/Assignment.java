@@ -59,6 +59,10 @@ public class Assignment {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     @PrePersist
     void onCreate() {
         if (id == null) {

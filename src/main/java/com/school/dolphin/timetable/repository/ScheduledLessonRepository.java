@@ -2,6 +2,10 @@ package com.school.dolphin.timetable.repository;
 
 
 import com.school.dolphin.timetable.entity.ScheduledLesson;
+import com.school.dolphin.staff.entity.StaffAssignmentStatus;
+import com.school.dolphin.staff.entity.StaffType;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -15,6 +19,28 @@ public interface ScheduledLessonRepository
 
     List<ScheduledLesson>
     findByTeacherAssignment_IdAndActiveTrue(UUID staffAssignmentId);
+
+    @Query("""
+        SELECT (COUNT(sl) > 0)
+        FROM ScheduledLesson sl
+        WHERE sl.active = true
+          AND sl.section.id = :sectionId
+          AND sl.teacherAssignment.staffMember.id = :staffMemberId
+          AND sl.teacherAssignment.institution.id = :institutionId
+          AND sl.teacherAssignment.status = :status
+          AND sl.teacherAssignment.staffType = :staffType
+          AND sl.teacherAssignment.startDate <= :onDate
+          AND (sl.teacherAssignment.endDate IS NULL
+               OR sl.teacherAssignment.endDate >= :onDate)
+        """)
+    boolean existsActiveTeachingAssignmentForSection(
+            @Param("sectionId") UUID sectionId,
+            @Param("staffMemberId") UUID staffMemberId,
+            @Param("institutionId") UUID institutionId,
+            @Param("status") StaffAssignmentStatus status,
+            @Param("staffType") StaffType staffType,
+            @Param("onDate") java.time.LocalDate onDate
+    );
 
     boolean existsBySection_IdAndSlot_IdAndActiveTrue(
             UUID sectionId, UUID slotId);

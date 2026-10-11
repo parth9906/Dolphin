@@ -12,8 +12,7 @@ import com.school.dolphin.attendance.repository.LessonAttendanceRepository;
 import com.school.dolphin.common.exception.ResourceNotFoundException;
 import com.school.dolphin.guardian.entity.StudentGuardian;
 import com.school.dolphin.guardian.repository.StudentGuardianRepository;
-import com.school.dolphin.identity.repository.UserAccountRepository;
-import com.school.dolphin.identity.security.AuthenticatedUser;
+import com.school.dolphin.identity.security.AuthenticatedUserResolver;
 import com.school.dolphin.parent.dto.ParentAttendanceResponse;
 import com.school.dolphin.parent.dto.ParentPortalStudentResponse;
 import lombok.AllArgsConstructor;
@@ -37,9 +36,9 @@ public class ParentPortalService {
 
     private final StudentGuardianRepository studentGuardianRepository;
     private final AttendanceRepository attendanceRepository;
-    private final UserAccountRepository userAccountRepository;
     private final LessonAttendanceRepository lessonAttendanceRepository;
     private final AttendanceAlertRepository attendanceAlertRepository;
+    private final AuthenticatedUserResolver authenticatedUserResolver;
 
 
 
@@ -123,11 +122,7 @@ public class ParentPortalService {
 
         validateParentAttendanceRange(startDate, endDate);
 
-        UUID userId = userAccountRepository
-                .findByUsername(authentication.getName())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Authenticated user account not found"))
-                .getId();
+        UUID userId = authenticatedUserId(authentication);
 
         // Reuse the existing active guardian-student authorization query.
         studentGuardianRepository
@@ -184,11 +179,7 @@ public class ParentPortalService {
 
         validateParentAttendanceRange(startDate, endDate);
 
-        UUID userId = userAccountRepository
-                .findByUsername(authentication.getName())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Authenticated user account not found"))
-                .getId();
+        UUID userId = authenticatedUserId(authentication);
 
         studentGuardianRepository
                 .findActiveStudentForGuardianAccount(userId, studentId)
@@ -226,11 +217,7 @@ public class ParentPortalService {
             UUID studentId,
             Authentication authentication) {
 
-        UUID userId = userAccountRepository
-                .findByUsername(authentication.getName())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Authenticated user account not found"))
-                .getId();
+        UUID userId = authenticatedUserId(authentication);
 
         studentGuardianRepository
                 .findActiveStudentForGuardianAccount(userId, studentId)
@@ -284,15 +271,7 @@ public class ParentPortalService {
     }
 
     private UUID authenticatedUserId(Authentication authentication) {
-        if (authentication == null
-                || !(authentication.getPrincipal()
-                instanceof AuthenticatedUser user)) {
-            throw new AccessDeniedException(
-                    "Authenticated guardian account required"
-            );
-        }
-
-        return user.userId();
+        return authenticatedUserResolver.requireUserId(authentication);
     }
 
     private ParentPortalStudentResponse toResponse(

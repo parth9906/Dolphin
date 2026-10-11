@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.school.dolphin.common.exception.BusinessRuleViolationException;
 import com.school.dolphin.common.exception.ResourceNotFoundException;
 import com.school.dolphin.identity.entity.UserAccount;
-import com.school.dolphin.identity.repository.UserAccountRepository;
+import com.school.dolphin.identity.security.AuthenticatedUserResolver;
 import com.school.dolphin.leave.entity.LeaveRequestStatus;
 import com.school.dolphin.leave.repository.StaffLeaveRequestRepository;
 import com.school.dolphin.staff.entity.StaffAssignment;
@@ -40,7 +40,7 @@ public class SubstituteAssignmentService {
     private final StaffAssignmentRepository staffAssignmentRepository;
     private final TeacherSubjectAssignmentRepository teacherSubjectAssignmentRepository;
     private final StaffLeaveRequestRepository staffLeaveRequestRepository;
-    private final UserAccountRepository userAccountRepository;
+    private final AuthenticatedUserResolver authenticatedUserResolver;
     private final OrganizationScopeAuthorization organizationScopeAuthorization;
 
     @Transactional
@@ -131,10 +131,8 @@ public class SubstituteAssignmentService {
                     "The substitute has another lesson overlapping this time");
         }
 
-        UserAccount currentUser = userAccountRepository
-                .findByUsername(authentication.getName())
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Authenticated user account not found"));
+        UserAccount currentUser = authenticatedUserResolver
+                .requireUserAccount(authentication);
 
         StaffAssignment previousSubstitute =
                 occurrence.getSubstituteStaffAssignment();

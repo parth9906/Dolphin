@@ -3,6 +3,7 @@ package com.school.dolphin.homework.controller;
 import com.school.dolphin.homework.dto.AssignmentResponse;
 import com.school.dolphin.homework.dto.CreateAssignmentRequest;
 import com.school.dolphin.homework.dto.UpdateAssignmentRequest;
+import com.school.dolphin.homework.dto.PublishAssignmentRequest;
 import com.school.dolphin.homework.entity.AssignmentStatus;
 import com.school.dolphin.homework.service.AssignmentService;
 import jakarta.validation.Valid;
@@ -74,8 +75,9 @@ public class AssignmentController {
     @PreAuthorize("hasAuthority('ASSIGNMENT_PUBLISH')")
     public AssignmentResponse publish(
             @PathVariable UUID assignmentId,
+            @Valid @RequestBody PublishAssignmentRequest request,
             Authentication authentication
     ) {
-        return assignmentService.publish(assignmentId, authentication);
+        return assignmentService.publish(assignmentId, request, authentication);
     }
 }
