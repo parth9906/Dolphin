@@ -1,5 +1,6 @@
 package com.school.dolphin.attendance.controller;
 
+import com.school.dolphin.attendance.dto.AttendanceAlertResponse;
 import com.school.dolphin.attendance.dto.AttendanceResponse;
 import com.school.dolphin.attendance.dto.ParentLessonAttendanceItemResponse;
 import com.school.dolphin.attendance.dto.ParentLessonAttendanceSummaryResponse;
@@ -66,5 +67,14 @@ public class StudentPortalAttendanceController {
     ) {
         return studentPortalAttendanceService.getMyLessonAttendanceSummary(
                 from, to, authentication);
+    }
+
+    @GetMapping("/attendance-alerts")
+    @PreAuthorize("hasAuthority('STUDENT_PORTAL_READ')")
+    public List<AttendanceAlertResponse> getMyAttendanceAlerts(
+            Authentication authentication
+    ) {
+        return studentPortalAttendanceService.getMyAttendanceAlerts(
+                authentication);
     }
 }

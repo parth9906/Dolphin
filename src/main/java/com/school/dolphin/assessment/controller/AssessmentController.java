@@ -4,10 +4,16 @@ package com.school.dolphin.assessment.controller;
 import com.school.dolphin.assessment.dto.*;
 import com.school.dolphin.assessment.service.AssessmentService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +34,33 @@ public class AssessmentController {
             Authentication authentication) {
 
         return assessmentService.createAssessment(request, authentication);
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAuthority('MARKS_READ')")
+    public Page<AssessmentResponse> searchAssessments(
+            @RequestParam UUID institutionId,
+            @RequestParam(required = false) UUID sectionId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate fromDate,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate toDate,
+            @PageableDefault(
+                    size = 20,
+                    sort = "assessmentDate",
+                    direction = Sort.Direction.DESC
+            ) Pageable pageable,
+            Authentication authentication) {
+
+        return assessmentService.searchAssessments(
+                institutionId,
+                sectionId,
+                fromDate,
+                toDate,
+                pageable,
+                authentication);
     }
 
     @PostMapping("/{assessmentId}/marks")

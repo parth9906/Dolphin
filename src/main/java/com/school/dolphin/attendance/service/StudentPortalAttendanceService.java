@@ -1,10 +1,13 @@
 package com.school.dolphin.attendance.service;
 
+import com.school.dolphin.attendance.dto.AttendanceAlertResponse;
 import com.school.dolphin.attendance.dto.AttendanceResponse;
 import com.school.dolphin.attendance.dto.ParentLessonAttendanceItemResponse;
 import com.school.dolphin.attendance.dto.ParentLessonAttendanceSummaryResponse;
 import com.school.dolphin.attendance.entity.LessonAttendanceRecord;
 import com.school.dolphin.attendance.entity.LessonAttendanceStatus;
+import com.school.dolphin.attendance.entity.AttendanceAlert;
+import com.school.dolphin.attendance.repository.AttendanceAlertRepository;
 import com.school.dolphin.attendance.repository.AttendanceRepository;
 import com.school.dolphin.attendance.repository.LessonAttendanceRepository;
 import com.school.dolphin.common.exception.BusinessRuleViolationException;
@@ -21,6 +24,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Read-only student portal views over the authenticated student's own attendance.
@@ -37,6 +41,36 @@ public class StudentPortalAttendanceService {
     private final CurrentStudentResolver currentStudentResolver;
     private final AttendanceRepository attendanceRepository;
     private final LessonAttendanceRepository lessonAttendanceRepository;
+    private final AttendanceAlertRepository attendanceAlertRepository;
+
+    @Transactional(readOnly = true)
+    public List<AttendanceAlertResponse> getMyAttendanceAlerts(
+            Authentication authentication
+    ) {
+        Student student = requireActiveStudent(authentication);
+
+        return attendanceAlertRepository
+                .findByStudent_IdOrderByGeneratedAtDesc(student.getId())
+                .stream()
+                .map(alert -> toAttendanceAlertResponse(alert, student.getId()))
+                .toList();
+    }
+
+    private AttendanceAlertResponse toAttendanceAlertResponse(
+            AttendanceAlert alert,
+            UUID studentId
+    ) {
+        return new AttendanceAlertResponse(
+                alert.getId(),
+                studentId,
+                alert.getPeriodStart(),
+                alert.getPeriodEnd(),
+                alert.getThresholdPercent(),
+                alert.getAttendancePercent(),
+                alert.getStatus(),
+                alert.getGeneratedAt(),
+                alert.getAcknowledgedAt());
+    }
 
     @Transactional(readOnly = true)
     public List<AttendanceResponse> getMyAttendance(

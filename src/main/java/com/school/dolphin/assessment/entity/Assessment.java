@@ -1,6 +1,7 @@
 
 package com.school.dolphin.assessment.entity;
 
+import com.school.dolphin.academic.entity.ClassSection;
 import com.school.dolphin.identity.entity.UserAccount;
 import com.school.dolphin.organization.entity.Institution;
 import jakarta.persistence.*;
@@ -26,6 +27,10 @@ public class Assessment {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "institution_id", nullable = false)
     private Institution institution;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "section_id")
+    private ClassSection section;
 
     @Column(nullable = false, length = 150)
     private String name;

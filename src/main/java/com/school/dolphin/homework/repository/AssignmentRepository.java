@@ -45,4 +45,18 @@ public interface AssignmentRepository
             AssignmentStatus status,
             Pageable pageable
     );
+
+    @Query("""
+        SELECT a
+        FROM Assignment a
+        WHERE a.institution.id = :institutionId
+          AND a.section.id IN :sectionIds
+          AND (:status IS NULL OR a.status = :status)
+        """)
+    Page<Assignment> searchBySectionIds(
+            @Param("institutionId") UUID institutionId,
+            @Param("sectionIds") Collection<UUID> sectionIds,
+            @Param("status") AssignmentStatus status,
+            Pageable pageable
+    );
 }

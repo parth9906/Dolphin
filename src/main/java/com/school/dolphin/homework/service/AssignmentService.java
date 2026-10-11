@@ -36,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.LocalDate;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -104,8 +105,14 @@ public class AssignmentService {
             Authentication authentication
     ) {
         Assignment assignment = findAssignment(assignmentId);
-        validateInstitutionAccess(
-                authentication, assignment.getInstitution().getId());
+
+        if (!canReadSectionAssignments(
+                authentication,
+                assignment.getInstitution().getId(),
+                assignment.getSection().getId())) {
+            throw new AccessDeniedException(
+                    "You are not authorized to read assignments for this section");
+        }
 
         return AssignmentResponse.from(assignment);
     }
@@ -118,9 +125,25 @@ public class AssignmentService {
             Pageable pageable,
             Authentication authentication
     ) {
-        validateInstitutionAccess(authentication, institutionId);
+        boolean institutionWide = scopeAuthorization.canAccessInstitution(
+                authentication, institutionId);
+
+        Set<UUID> teachingSectionIds = institutionWide
+                ? Set.of()
+                : teacherSectionAuthorization.findCurrentTeachingSectionIds(
+                        authentication, institutionId, LocalDate.now());
+
+        if (!institutionWide && teachingSectionIds.isEmpty()) {
+            throw new AccessDeniedException(
+                    "You do not have access to assignments in this institution");
+        }
 
         if (sectionId != null) {
+            if (!institutionWide && !teachingSectionIds.contains(sectionId)) {
+                throw new AccessDeniedException(
+                        "You are not authorized to read assignments for this section");
+            }
+
             ClassSection section = classSectionRepository.findById(sectionId)
                     .orElseThrow(() ->
                             new ResourceNotFoundException("Class section not found"));
@@ -128,9 +151,30 @@ public class AssignmentService {
             validateSectionBelongsToInstitution(section, institutionId);
         }
 
+        if (institutionWide || sectionId != null) {
+            return assignmentRepository
+                    .search(institutionId, sectionId, status, pageable)
+                    .map(AssignmentResponse::from);
+        }
+
         return assignmentRepository
-                .search(institutionId, sectionId, status, pageable)
+                .searchBySectionIds(
+                        institutionId, teachingSectionIds, status, pageable)
                 .map(AssignmentResponse::from);
+    }
+
+    private boolean canReadSectionAssignments(
+            Authentication authentication,
+            UUID institutionId,
+            UUID sectionId
+    ) {
+        if (scopeAuthorization.canAccessInstitution(
+                authentication, institutionId)) {
+            return true;
+        }
+
+        return teacherSectionAuthorization.isCurrentUserTeachingSection(
+                authentication, sectionId, institutionId, LocalDate.now());
     }
 
     @Transactional

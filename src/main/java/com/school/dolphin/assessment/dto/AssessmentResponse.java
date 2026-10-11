@@ -8,6 +8,7 @@ import java.util.UUID;
 public record AssessmentResponse(
         UUID id,
         UUID institutionId,
+        UUID sectionId,
         String name,
         String subjectName,
         LocalDate assessmentDate,

@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -71,5 +72,28 @@ public class TeacherSectionAuthorization {
                 .map(staff -> isTeachingSection(
                         staff.getId(), sectionId, institutionId, onDate))
                 .orElse(false);
+    }
+
+    /**
+     * Section ids the authenticated user is currently assigned to teach within
+     * the institution, or an empty set when the user has no linked active staff
+     * profile. Used to narrow institution-wide reads for teachers without
+     * institution-level scope.
+     */
+    @Transactional(readOnly = true)
+    public Set<UUID> findCurrentTeachingSectionIds(
+            Authentication authentication,
+            UUID institutionId,
+            LocalDate onDate
+    ) {
+        return findCurrentActiveStaffMember(authentication)
+                .map(staff -> Set.copyOf(
+                        scheduledLessonRepository.findActiveTeachingSectionIds(
+                                staff.getId(),
+                                institutionId,
+                                StaffAssignmentStatus.ACTIVE,
+                                StaffType.TEACHER,
+                                onDate)))
+                .orElseGet(Set::of);
     }
 }

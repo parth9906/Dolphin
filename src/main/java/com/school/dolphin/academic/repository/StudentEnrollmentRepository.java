@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -51,6 +52,11 @@ public interface StudentEnrollmentRepository
 
     List<StudentEnrollment> findByStudent_IdAndStatus(
             UUID studentId,
+            EnrollmentStatus status
+    );
+
+    List<StudentEnrollment> findByStudent_IdInAndStatus(
+            Collection<UUID> studentIds,
             EnrollmentStatus status
     );
 }

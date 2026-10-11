@@ -9,6 +9,8 @@ import com.school.dolphin.identity.security.OrganizationScopeAuthorization;
 import com.school.dolphin.common.exception.BusinessRuleViolationException;
 import com.school.dolphin.student.entity.Student;
 import com.school.dolphin.student.repository.StudentRepository;
+import com.school.dolphin.student.service.StudentSectionResolver;
+import com.school.dolphin.timetable.service.TeacherSectionAuthorization;
 import com.school.dolphin.student.service.CurrentStudentResolver;
 import com.school.dolphin.common.exception.ResourceNotFoundException;
 
@@ -24,6 +26,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -36,19 +39,25 @@ public class StudentReportCardService {
     private final OrganizationScopeAuthorization scopeAuthorization;
     private final GradeCalculator gradeCalculator;
     private final CurrentStudentResolver currentStudentResolver;
+    private final TeacherSectionAuthorization teacherSectionAuthorization;
+    private final StudentSectionResolver studentSectionResolver;
 
     public StudentReportCardService(
             StudentMarkRepository studentMarkRepository,
             StudentRepository studentRepository,
             OrganizationScopeAuthorization scopeAuthorization,
             GradeCalculator gradeCalculator,
-            CurrentStudentResolver currentStudentResolver
+            CurrentStudentResolver currentStudentResolver,
+            TeacherSectionAuthorization teacherSectionAuthorization,
+            StudentSectionResolver studentSectionResolver
     ) {
         this.studentMarkRepository = studentMarkRepository;
         this.studentRepository = studentRepository;
         this.scopeAuthorization = scopeAuthorization;
         this.gradeCalculator = gradeCalculator;
         this.currentStudentResolver = currentStudentResolver;
+        this.teacherSectionAuthorization = teacherSectionAuthorization;
+        this.studentSectionResolver = studentSectionResolver;
     }
 
     @Transactional(readOnly = true)
@@ -70,12 +79,37 @@ public class StudentReportCardService {
 
         if (!scopeAuthorization.canAccessInstitution(
                 authentication, institutionId)) {
-            throw new AccessDeniedException(
-                    "You do not have access to this student's institution"
-            );
+            requireTeacherSectionAccess(authentication, institutionId, student);
         }
 
         return buildReportCard(student, fromDate, toDate);
+    }
+
+    /**
+     * A caller without institution-level access may read the report card only
+     * when the student is actively enrolled in a section they currently teach.
+     */
+    private void requireTeacherSectionAccess(
+            Authentication authentication,
+            UUID institutionId,
+            Student student
+    ) {
+        LocalDate today = LocalDate.now();
+
+        Set<UUID> allowedSectionIds = teacherSectionAuthorization
+                .findCurrentTeachingSectionIds(
+                        authentication, institutionId, today);
+
+        boolean allowed = !allowedSectionIds.isEmpty()
+                && studentSectionResolver
+                .findActiveSectionIds(student.getId(), today)
+                .stream()
+                .anyMatch(allowedSectionIds::contains);
+
+        if (!allowed) {
+            throw new AccessDeniedException(
+                    "You do not have access to this student's report card");
+        }
     }
 
     @Transactional(readOnly = true)

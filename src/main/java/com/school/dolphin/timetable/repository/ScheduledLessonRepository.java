@@ -75,4 +75,23 @@ public interface ScheduledLessonRepository
         """)
     List<ScheduledLesson> findActiveTimetableForSections(
             @Param("sectionIds") java.util.Collection<UUID> sectionIds);
+
+    @Query("""
+        SELECT DISTINCT sl.section.id
+        FROM ScheduledLesson sl
+        WHERE sl.active = true
+          AND sl.teacherAssignment.staffMember.id = :staffMemberId
+          AND sl.teacherAssignment.institution.id = :institutionId
+          AND sl.teacherAssignment.status = :status
+          AND sl.teacherAssignment.staffType = :staffType
+          AND sl.teacherAssignment.startDate <= :onDate
+          AND (sl.teacherAssignment.endDate IS NULL
+               OR sl.teacherAssignment.endDate >= :onDate)
+        """)
+    List<UUID> findActiveTeachingSectionIds(
+            @Param("staffMemberId") UUID staffMemberId,
+            @Param("institutionId") UUID institutionId,
+            @Param("status") StaffAssignmentStatus status,
+            @Param("staffType") StaffType staffType,
+            @Param("onDate") java.time.LocalDate onDate);
 }

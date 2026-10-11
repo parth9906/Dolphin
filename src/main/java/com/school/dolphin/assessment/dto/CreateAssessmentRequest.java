@@ -12,6 +12,7 @@ import java.util.UUID;
 
 public record CreateAssessmentRequest(
         @NotNull UUID institutionId,
+        UUID sectionId,
         @NotBlank @Size(max = 150) String name,
         @NotBlank @Size(max = 100) String subjectName,
         @NotNull LocalDate assessmentDate,
