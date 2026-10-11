@@ -1,15 +1,16 @@
 # Analytics
 
-Status: **Proposed — Not Yet Implemented** (dedicated package). Some analytics
-endpoints already ship inside other modules.
+Status: **Partially Implemented**. A dedicated `analytics` package now ships an
+institution summary endpoint; aggregated cross-module dashboards beyond it
+remain proposed.
 
 [Shared conventions](../../../../../../../docs/api/README.md) apply.
 
 ## A. Module overview
 
-The `analytics` package is currently empty. There are **no** endpoints owned by
-this package. Cross-cutting analytics currently exist inside the modules that
-own the data:
+The `analytics` package owns `GET /api/v1/analytics/institution-summary`
+(`ANALYTICS_READ`, institution scope). Cross-cutting analytics also exist inside
+the modules that own the data:
 
 - Attendance analytics (lesson student/section/subject/low-attendance) live in
   `attendance` (`/api/v1/lesson-attendance/analytics/*`) - see
@@ -21,8 +22,26 @@ own the data:
 - Notification outbox summary lives in `notification`
   (`/api/v1/notification-outbox/summary`).
 
-A dedicated analytics module (aggregated dashboards across modules) is **not yet
-implemented**. Everything in section D is a proposal.
+A dedicated analytics module (further aggregated dashboards across modules) is
+**not yet implemented**. Everything else in section D is a proposal.
+
+## D. Implemented endpoint
+
+### GET /api/v1/analytics/institution-summary
+
+- Query: `institutionId` (required), `fromDate` (required), `toDate` (required,
+  range <= 366 days). Auth: bearer. Permission: `ANALYTICS_READ`.
+- Scope: institution scope enforced; `403` outside the caller's scope.
+- Response `200` `AnalyticsInstitutionSummaryResponse`:
+  `{ institutionId, fromDate, toDate, activeStudents, activeStaff,
+  activeEnrollments, attendancePresent, attendanceAbsent, attendanceLate,
+  attendanceExcused, attendanceEligible, attendancePercentage }`.
+- Semantics: `activeStudents` counts active student profiles; `activeStaff`
+  counts distinct staff members with an active assignment; `activeEnrollments`
+  counts active `student_enrollment` rows for the institution;
+  attendance figures count daily attendance records in the range and match the
+  `attendance` module formula (eligible = present + absent + late; percentage =
+  (present + late) / eligible, rounded half-up, `0.00` when no records).
 
 ## B. Proposal: conventions
 

@@ -1,0 +1,57 @@
+package com.school.dolphin.leave.entity;
+
+import com.school.dolphin.identity.entity.UserAccount;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+@Entity
+@Table(name = "student_leave_audit")
+@Getter
+@NoArgsConstructor
+public class StudentLeaveAudit {
+
+    @Id
+    private UUID id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "leave_request_id", nullable = false)
+    private StudentLeaveRequest leaveRequest;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private LeaveRequestStatus previousStatus;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private LeaveRequestStatus newStatus;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "changed_by_user_id", nullable = false)
+    private UserAccount changedBy;
+
+    @Column(length = 1000)
+    private String comment;
+
+    @Column(nullable = false, updatable = false)
+    private OffsetDateTime changedAt;
+
+    public StudentLeaveAudit(
+            StudentLeaveRequest leaveRequest,
+            LeaveRequestStatus previousStatus,
+            LeaveRequestStatus newStatus,
+            UserAccount changedBy,
+            String comment
+    ) {
+        this.id = UUID.randomUUID();
+        this.leaveRequest = leaveRequest;
+        this.previousStatus = previousStatus;
+        this.newStatus = newStatus;
+        this.changedBy = changedBy;
+        this.comment = comment;
+        this.changedAt = OffsetDateTime.now();
+    }
+}

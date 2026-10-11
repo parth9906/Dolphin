@@ -2,11 +2,18 @@
 package com.school.dolphin.identity.security;
 
 import com.school.dolphin.identity.entity.UserOrganizationScope;
+import com.school.dolphin.identity.entity.OrganizationScopeType;
 import com.school.dolphin.identity.repository.UserOrganizationScopeRepository;
+import com.school.dolphin.organization.entity.Cluster;
+import com.school.dolphin.organization.entity.Enterprise;
 import com.school.dolphin.organization.entity.Campus;
 import com.school.dolphin.organization.entity.Institution;
+import com.school.dolphin.organization.entity.Region;
+import com.school.dolphin.organization.repository.ClusterRepository;
 import com.school.dolphin.organization.repository.CampusRepository;
+import com.school.dolphin.organization.repository.EnterpriseRepository;
 import com.school.dolphin.organization.repository.InstitutionRepository;
+import com.school.dolphin.organization.repository.RegionRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,15 +27,161 @@ public class OrganizationScopeAuthorization {
     private final UserOrganizationScopeRepository scopeRepository;
     private final InstitutionRepository institutionRepository;
     private final CampusRepository campusRepository;
+    private final EnterpriseRepository enterpriseRepository;
+    private final RegionRepository regionRepository;
+    private final ClusterRepository clusterRepository;
 
     public OrganizationScopeAuthorization(
             UserOrganizationScopeRepository scopeRepository,
             InstitutionRepository institutionRepository,
-            CampusRepository campusRepository
+            CampusRepository campusRepository,
+            EnterpriseRepository enterpriseRepository,
+            RegionRepository regionRepository,
+            ClusterRepository clusterRepository
     ) {
         this.scopeRepository = scopeRepository;
         this.institutionRepository = institutionRepository;
         this.campusRepository = campusRepository;
+        this.enterpriseRepository = enterpriseRepository;
+        this.regionRepository = regionRepository;
+        this.clusterRepository = clusterRepository;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean canAccessEnterprise(
+            Authentication authentication,
+            UUID enterpriseId
+    ) {
+        UUID userId = getAuthenticatedUserId(authentication);
+
+        if (userId == null || enterpriseId == null) {
+            return false;
+        }
+
+        Enterprise enterprise = enterpriseRepository
+                .findById(enterpriseId)
+                .orElse(null);
+
+        if (enterprise == null || !enterprise.isActive()) {
+            return false;
+        }
+
+        List<UserOrganizationScope> scopes =
+                scopeRepository.findByUser_Id(userId);
+
+        for (UserOrganizationScope scope : scopes) {
+            if (scope.getScopeType() == OrganizationScopeType.ENTERPRISE
+                    && enterprise.getId().equals(scope.getScopeId())) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean canAccessRegion(
+            Authentication authentication,
+            UUID regionId
+    ) {
+        UUID userId = getAuthenticatedUserId(authentication);
+
+        if (userId == null || regionId == null) {
+            return false;
+        }
+
+        Region region = regionRepository.findById(regionId).orElse(null);
+
+        if (region == null || !region.isActive()) {
+            return false;
+        }
+
+        Enterprise enterprise = region.getEnterprise();
+
+        if (enterprise == null || !enterprise.isActive()) {
+            return false;
+        }
+
+        List<UserOrganizationScope> scopes =
+                scopeRepository.findByUser_Id(userId);
+
+        for (UserOrganizationScope scope : scopes) {
+            switch (scope.getScopeType()) {
+                case ENTERPRISE -> {
+                    if (enterprise.getId().equals(scope.getScopeId())) {
+                        return true;
+                    }
+                }
+                case REGION -> {
+                    if (region.getId().equals(scope.getScopeId())) {
+                        return true;
+                    }
+                }
+                default -> {
+                    // Lower-level scopes do not grant access to this region.
+                }
+            }
+        }
+
+        return false;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean canAccessCluster(
+            Authentication authentication,
+            UUID clusterId
+    ) {
+        UUID userId = getAuthenticatedUserId(authentication);
+
+        if (userId == null || clusterId == null) {
+            return false;
+        }
+
+        Cluster cluster = clusterRepository.findById(clusterId).orElse(null);
+
+        if (cluster == null || !cluster.isActive()) {
+            return false;
+        }
+
+        Region region = cluster.getRegion();
+
+        if (region == null || !region.isActive()) {
+            return false;
+        }
+
+        Enterprise enterprise = region.getEnterprise();
+
+        if (enterprise == null || !enterprise.isActive()) {
+            return false;
+        }
+
+        List<UserOrganizationScope> scopes =
+                scopeRepository.findByUser_Id(userId);
+
+        for (UserOrganizationScope scope : scopes) {
+            switch (scope.getScopeType()) {
+                case ENTERPRISE -> {
+                    if (enterprise.getId().equals(scope.getScopeId())) {
+                        return true;
+                    }
+                }
+                case REGION -> {
+                    if (region.getId().equals(scope.getScopeId())) {
+                        return true;
+                    }
+                }
+                case CLUSTER -> {
+                    if (cluster.getId().equals(scope.getScopeId())) {
+                        return true;
+                    }
+                }
+                default -> {
+                    // Lower-level scopes do not grant access to this cluster.
+                }
+            }
+        }
+
+        return false;
     }
 
     @Transactional(readOnly = true)

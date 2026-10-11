@@ -176,7 +176,7 @@ responses.
 | Attendance | `attendance` | Implemented | [attendance/README.md](../../src/main/java/com/school/dolphin/attendance/README.md) |
 | Assessment & marks | `assessment` | Implemented | [assessment/README.md](../../src/main/java/com/school/dolphin/assessment/README.md) |
 | Timetable & scheduling | `timetable` | Implemented | [timetable/README.md](../../src/main/java/com/school/dolphin/timetable/README.md) |
-| Staff leave | `leave` | Partially Implemented | [leave/README.md](../../src/main/java/com/school/dolphin/leave/README.md) |
+| Staff & student leave | `leave` | Implemented | [leave/README.md](../../src/main/java/com/school/dolphin/leave/README.md) |
 | Events & calendar | `calendar` | Implemented | [calendar/README.md](../../src/main/java/com/school/dolphin/calendar/README.md) |
 | Guardians | `guardian` | Implemented | [guardian/README.md](../../src/main/java/com/school/dolphin/guardian/README.md) |
 | Parent portal | `parent` | Partially Implemented | [parent/README.md](../../src/main/java/com/school/dolphin/parent/README.md) |
@@ -187,8 +187,8 @@ responses.
 | Inventory | `inventory` | Implemented | [inventory/README.md](../../src/main/java/com/school/dolphin/inventory/README.md) |
 | Mess / canteen | `mess` | Implemented | [mess/README.md](../../src/main/java/com/school/dolphin/mess/README.md) |
 | Notifications & outbox | `notification` | Implemented | [notification/README.md](../../src/main/java/com/school/dolphin/notification/README.md) |
-| Analytics | `analytics` | Proposed | [analytics/README.md](../../src/main/java/com/school/dolphin/analytics/README.md) |
-| Certificates & documents | `document` | Proposed | [document/README.md](../../src/main/java/com/school/dolphin/document/README.md) |
+| Analytics | `analytics` | Partially Implemented | [analytics/README.md](../../src/main/java/com/school/dolphin/analytics/README.md) |
+| Certificates & documents | `document` | Partially Implemented | [document/README.md](../../src/main/java/com/school/dolphin/document/README.md) |
 
 Status legend: **Implemented** (endpoints exist), **Partially Implemented**
 (ships only part of the frozen V1 scope), **Proposed** (no code yet).

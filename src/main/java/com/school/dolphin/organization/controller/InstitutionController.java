@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -22,16 +23,18 @@ public class InstitutionController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('INSTITUTION_CREATE')")
     public InstitutionResponse create(
-            @Valid @RequestBody CreateInstitutionRequest request
+            @Valid @RequestBody CreateInstitutionRequest request,
+            Authentication authentication
     ) {
-        return institutionService.create(request);
+        return institutionService.create(request, authentication);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('INSTITUTION_READ')")
     public InstitutionResponse getById(
-            @PathVariable UUID id
+            @PathVariable UUID id,
+            Authentication authentication
     ) {
-        return institutionService.getById(id);
+        return institutionService.getById(id, authentication);
     }
 }

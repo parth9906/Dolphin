@@ -3,6 +3,7 @@ package com.school.dolphin.organization.service;
 import com.school.dolphin.common.exception.BusinessRuleViolationException;
 import com.school.dolphin.common.exception.DuplicateResourceException;
 import com.school.dolphin.common.exception.ResourceNotFoundException;
+import com.school.dolphin.identity.security.OrganizationScopeAuthorization;
 import com.school.dolphin.organization.dto.CreateInstitutionRequest;
 import com.school.dolphin.organization.dto.InstitutionResponse;
 import com.school.dolphin.organization.entity.Cluster;
@@ -10,6 +11,8 @@ import com.school.dolphin.organization.entity.Institution;
 import com.school.dolphin.organization.repository.ClusterRepository;
 import com.school.dolphin.organization.repository.InstitutionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,9 +24,13 @@ public class InstitutionService {
 
     private final InstitutionRepository institutionRepository;
     private final ClusterRepository clusterRepository;
+    private final OrganizationScopeAuthorization scopeAuthorization;
 
     @Transactional
-    public InstitutionResponse create(CreateInstitutionRequest request) {
+    public InstitutionResponse create(
+            CreateInstitutionRequest request,
+            Authentication authentication
+    ) {
 
         Cluster cluster = clusterRepository.findById(request.clusterId())
                 .orElseThrow(() ->
@@ -31,6 +38,13 @@ public class InstitutionService {
                                 "Cluster not found: " + request.clusterId()
                         )
                 );
+
+        if (!scopeAuthorization.canAccessCluster(
+                authentication, cluster.getId())) {
+            throw new AccessDeniedException(
+                    "You do not have access to this cluster"
+            );
+        }
 
         if (!cluster.isActive()) {
             throw new BusinessRuleViolationException(
@@ -62,7 +76,10 @@ public class InstitutionService {
     }
 
     @Transactional(readOnly = true)
-    public InstitutionResponse getById(UUID id) {
+    public InstitutionResponse getById(
+            UUID id,
+            Authentication authentication
+    ) {
 
         Institution institution = institutionRepository.findById(id)
                 .orElseThrow(() ->
@@ -70,6 +87,12 @@ public class InstitutionService {
                                 "Institution not found: " + id
                         )
                 );
+
+        if (!scopeAuthorization.canAccessInstitution(authentication, id)) {
+            throw new AccessDeniedException(
+                    "You do not have access to this institution"
+            );
+        }
 
         return toResponse(institution);
     }

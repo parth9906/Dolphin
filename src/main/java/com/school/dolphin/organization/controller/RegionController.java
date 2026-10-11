@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,24 +24,27 @@ public class RegionController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('REGION_CREATE')")
     public RegionResponse create(
-            @Valid @RequestBody CreateRegionRequest request
+            @Valid @RequestBody CreateRegionRequest request,
+            Authentication authentication
     ) {
-        return regionService.create(request);
+        return regionService.create(request, authentication);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('REGION_READ')")
     public RegionResponse getById(
-            @PathVariable UUID id
+            @PathVariable UUID id,
+            Authentication authentication
     ) {
-        return regionService.getById(id);
+        return regionService.getById(id, authentication);
     }
 
     @GetMapping("/by-enterprise/{enterpriseId}")
     @PreAuthorize("hasAuthority('REGION_READ')")
     public List<RegionResponse> getByEnterprise(
-            @PathVariable UUID enterpriseId
+            @PathVariable UUID enterpriseId,
+            Authentication authentication
     ) {
-        return regionService.getByEnterprise(enterpriseId);
+        return regionService.getByEnterprise(enterpriseId, authentication);
     }
 }

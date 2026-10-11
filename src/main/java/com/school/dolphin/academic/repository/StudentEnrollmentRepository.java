@@ -17,6 +17,11 @@ import java.util.UUID;
 public interface StudentEnrollmentRepository
         extends JpaRepository<StudentEnrollment, UUID> {
 
+    long countBySection_SchoolClass_AcademicYear_Institution_IdAndStatus(
+            UUID institutionId,
+            EnrollmentStatus status
+    );
+
     boolean existsByStudent_IdAndStatus(
             UUID studentId, EnrollmentStatus status);
 

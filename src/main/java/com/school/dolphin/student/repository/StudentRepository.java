@@ -14,6 +14,8 @@ import java.util.UUID;
 
 public interface StudentRepository extends JpaRepository<Student, UUID> {
 
+    long countByInstitution_IdAndActiveTrue(UUID institutionId);
+
     boolean existsByInstitution_IdAndAdmissionNumber(
             UUID institutionId,
             String admissionNumber

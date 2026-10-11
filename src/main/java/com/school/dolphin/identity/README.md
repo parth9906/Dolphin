@@ -50,6 +50,9 @@ Principal classes: `config/SecurityConfig`, `config/JwtProperties`,
 | POST | `/api/v1/auth/login` | Authenticate, obtain JWT | none (public) | none | Implemented |
 | POST | `/api/v1/users` | Create user account | `USER_CREATE` | none | Implemented |
 | GET | `/api/v1/users/{id}` | Read user account | `USER_READ` | none | Implemented |
+| PUT | `/api/v1/users/{id}` | Update user profile | `USER_UPDATE` | none | Implemented |
+| PATCH | `/api/v1/users/{id}/deactivate` | Deactivate user account | `USER_DEACTIVATE` | none | Implemented |
+| POST | `/api/v1/auth/change-password` | Change own password | authenticated user | self | Implemented |
 | POST | `/api/v1/users/{userId}/roles/{roleId}` | Grant role to user | `USER_ROLE_ASSIGN` | none | Implemented |
 | POST | `/api/v1/users/{userId}/scopes` | Grant organization scope | `USER_SCOPE_ASSIGN` | none | Implemented |
 | POST | `/api/v1/roles` | Create role | `ROLE_CREATE` | none | Implemented |
@@ -133,6 +136,32 @@ Token details: HS256, 15-minute lifetime, claims `sub`/`username`/`iat`/`exp`.
 - Auth: bearer. Permission: `USER_READ`. Scope: none.
 - Path: `id` (UUID, required) - user id.
 - Response `200` `UserResponse`.
+
+### PUT /api/v1/users/{id}
+
+- Auth: bearer. Permission: `USER_UPDATE`. Scope: none.
+- Request body (`UpdateUserRequest`): `email` (required, valid, <= 255),
+  `firstName` (required, <= 100), `lastName` (optional, <= 100).
+- Response `200` `UserResponse`. Errors: `400`, `403`, `404`,
+  `409 DUPLICATE_RESOURCE` (email in use by another account).
+
+### PATCH /api/v1/users/{id}/deactivate
+
+- Auth: bearer. Permission: `USER_DEACTIVATE`. Scope: none.
+- No body. Response `200` `UserResponse` with `active=false`. Idempotent:
+  deactivating an already inactive account succeeds.
+- Effect: the account can no longer authenticate, and existing tokens stop
+  granting authorities on the next request (the JWT filter re-checks `active`).
+
+### POST /api/v1/auth/change-password
+
+- Auth: bearer (any authenticated user, including students, guardians and
+  staff). Scope: self.
+- Request body (`ChangePasswordRequest`): `currentPassword` (required),
+  `newPassword` (required, 8..100).
+- Response `200` `{ status: "CHANGED", message }`.
+- Errors: `400 VALIDATION_ERROR`; `422 BUSINESS_RULE_VIOLATION` when the
+  current password is incorrect.
 - Errors: `404 RESOURCE_NOT_FOUND`.
 
 ### POST /api/v1/users/{userId}/roles/{roleId}
@@ -218,7 +247,8 @@ duplicate grants.
 ## I. State transitions
 
 `UserAccount.active`: created `true`. A deactivated account cannot authenticate
-and any existing token stops granting authorities. No V1 API deactivates users.
+and any existing token stops granting authorities (`PATCH
+/api/v1/users/{id}/deactivate` sets `active=false`; idempotent).
 
 ## J. Dependencies and integrations
 
@@ -228,8 +258,10 @@ and any existing token stops granting authorities. No V1 API deactivates users.
 ## K. Open issues and implementation gaps
 
 - No endpoint to list users/roles/permissions (only read-by-id).
-- No password reset/change, refresh token, logout or token revocation.
-- No API to deactivate users/roles/permissions or revoke grants.
+- No self-service password reset (change-password requires the current
+  password), refresh token, logout or token revocation.
+- No API to deactivate roles/permissions or revoke role/scope grants
+  (user account deactivation exists).
 - Login rate limiting is per-instance in memory; multi-instance needs a shared store.
 - Unauthenticated requests return the servlet default 401 body, not `ErrorResponse`.
 - Administrative endpoints perform no organization-scope enforcement; the

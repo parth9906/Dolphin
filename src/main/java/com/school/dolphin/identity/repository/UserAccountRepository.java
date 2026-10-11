@@ -13,6 +13,8 @@ public interface UserAccountRepository
 
     boolean existsByEmail(String email);
 
+    boolean existsByEmailAndIdNot(String email, UUID id);
+
     Optional<UserAccount> findByUsername(String username);
 
     Optional<UserAccount> findByEmailIgnoreCase(String email);

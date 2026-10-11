@@ -26,27 +26,33 @@ services of the same names, `entity/{Enterprise,Region,Cluster,Institution,Campu
 
 - Base path: `/api/v1`.
 - Authentication: bearer; permissions as in the inventory.
-- Scope: **none at this layer** - these are platform-administration endpoints
-  gated only by permission. Client-supplied parent ids are validated for
-  existence, not for caller ownership.
+- Scope: organization nodes are scope-checked like every other module. Reads
+  require a scope at or above the requested node (`ENTERPRISE` scope for an
+  enterprise; `ENTERPRISE`/`REGION` for a region; the same plus `CLUSTER` for a
+  cluster; `INSTITUTION` for an institution; campus rules as elsewhere).
+  Create-under-parent requires scope over the parent node (`canAccessEnterprise`
+  for regions, `canAccessRegion` for clusters, `canAccessCluster` for
+  institutions, `canAccessInstitution` for campuses). Creating an enterprise has
+  no parent and remains permission-gated only, consistent with
+  `docs/api/README.md`.
 - Pagination: none (child listings return full lists).
 
 ## C. Endpoint inventory
 
 | Method | Path | Purpose | Permission | Scope | Status |
 |---|---|---|---|---|---|
-| POST | `/api/v1/enterprises` | Create enterprise | `ENTERPRISE_CREATE` | none | Implemented |
-| GET | `/api/v1/enterprises/{id}` | Read enterprise | `ENTERPRISE_READ` | none | Implemented |
-| POST | `/api/v1/regions` | Create region | `REGION_CREATE` | none | Implemented |
-| GET | `/api/v1/regions/{id}` | Read region | `REGION_READ` | none | Implemented |
-| GET | `/api/v1/regions/by-enterprise/{enterpriseId}` | List regions | `REGION_READ` | none | Implemented |
-| POST | `/api/v1/clusters` | Create cluster | `CLUSTER_CREATE` | none | Implemented |
-| GET | `/api/v1/clusters/{id}` | Read cluster | `CLUSTER_READ` | none | Implemented |
-| GET | `/api/v1/clusters/by-region/{regionId}` | List clusters | `CLUSTER_READ` | none | Implemented |
-| POST | `/api/v1/institutions` | Create institution | `INSTITUTION_CREATE` | none | Implemented |
-| GET | `/api/v1/institutions/{id}` | Read institution | `INSTITUTION_READ` | none | Implemented |
-| POST | `/api/v1/campuses` | Create campus | `CAMPUS_CREATE` | none | Implemented |
-| GET | `/api/v1/campuses/{id}` | Read campus | `CAMPUS_READ` | none | Implemented |
+| POST | `/api/v1/enterprises` | Create enterprise | `ENTERPRISE_CREATE` | none (no parent) | Implemented |
+| GET | `/api/v1/enterprises/{id}` | Read enterprise | `ENTERPRISE_READ` | enterprise | Implemented |
+| POST | `/api/v1/regions` | Create region | `REGION_CREATE` | enterprise (parent) | Implemented |
+| GET | `/api/v1/regions/{id}` | Read region | `REGION_READ` | region | Implemented |
+| GET | `/api/v1/regions/by-enterprise/{enterpriseId}` | List regions | `REGION_READ` | enterprise | Implemented |
+| POST | `/api/v1/clusters` | Create cluster | `CLUSTER_CREATE` | region (parent) | Implemented |
+| GET | `/api/v1/clusters/{id}` | Read cluster | `CLUSTER_READ` | cluster | Implemented |
+| GET | `/api/v1/clusters/by-region/{regionId}` | List clusters | `CLUSTER_READ` | region | Implemented |
+| POST | `/api/v1/institutions` | Create institution | `INSTITUTION_CREATE` | cluster (parent) | Implemented |
+| GET | `/api/v1/institutions/{id}` | Read institution | `INSTITUTION_READ` | institution | Implemented |
+| POST | `/api/v1/campuses` | Create campus | `CAMPUS_CREATE` | institution (parent) | Implemented |
+| GET | `/api/v1/campuses/{id}` | Read campus | `CAMPUS_READ` | campus | Implemented |
 
 ## D. Endpoint contracts
 

@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -22,16 +23,18 @@ public class CampusController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('CAMPUS_CREATE')")
     public CampusResponse create(
-            @Valid @RequestBody CreateCampusRequest request
+            @Valid @RequestBody CreateCampusRequest request,
+            Authentication authentication
     ) {
-        return campusService.create(request);
+        return campusService.create(request, authentication);
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('CAMPUS_READ')")
     public CampusResponse getById(
-            @PathVariable UUID id
+            @PathVariable UUID id,
+            Authentication authentication
     ) {
-        return campusService.getById(id);
+        return campusService.getById(id, authentication);
     }
 }

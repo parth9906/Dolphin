@@ -159,6 +159,11 @@ public class LessonAttendanceService {
 
         authorizeOccurrenceAccess(authentication, occurrence);
 
+        if (occurrence.getLessonDate().isAfter(LocalDate.now())) {
+            throw new BusinessRuleViolationException(
+                    "Attendance for a future-dated lesson cannot be corrected");
+        }
+
         UserAccount currentUser = getAuthenticatedUser(authentication);
 
         LessonAttendanceStatus previousStatus = record.getStatus();
@@ -465,6 +470,11 @@ public class LessonAttendanceService {
 
     private void validateOccurrenceCanBeMarked(
             LessonOccurrence occurrence) {
+
+        if (occurrence.getLessonDate().isAfter(LocalDate.now())) {
+            throw new BusinessRuleViolationException(
+                    "Attendance cannot be recorded for a future-dated lesson");
+        }
 
         LessonOccurrenceStatus status = occurrence.getStatus();
 

@@ -136,6 +136,10 @@ All `Implemented`.
 - Response `200` `List<LessonAttendanceResponse>`.
 - Response fields include `markedByUserId`, `markedAt`, `version`.
 - Errors: `400`, `403`, `404`, `409`, `422`.
+- Business rules: only students actively enrolled in the section on the lesson
+  date may be marked; a student may appear once per batch; attendance cannot be
+  recorded for a cancelled or uncovered lesson, and cannot be recorded or
+  corrected for a future-dated lesson (`422`).
 
 ### PUT /api/v1/lesson-attendance/records/{attendanceRecordId}
 

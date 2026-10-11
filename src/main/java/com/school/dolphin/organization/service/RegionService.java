@@ -3,6 +3,7 @@ package com.school.dolphin.organization.service;
 import com.school.dolphin.common.exception.BusinessRuleViolationException;
 import com.school.dolphin.common.exception.DuplicateResourceException;
 import com.school.dolphin.common.exception.ResourceNotFoundException;
+import com.school.dolphin.identity.security.OrganizationScopeAuthorization;
 import com.school.dolphin.organization.dto.CreateRegionRequest;
 import com.school.dolphin.organization.dto.RegionResponse;
 import com.school.dolphin.organization.entity.Enterprise;
@@ -10,6 +11,8 @@ import com.school.dolphin.organization.entity.Region;
 import com.school.dolphin.organization.repository.EnterpriseRepository;
 import com.school.dolphin.organization.repository.RegionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,9 +25,13 @@ public class RegionService {
 
     private final RegionRepository regionRepository;
     private final EnterpriseRepository enterpriseRepository;
+    private final OrganizationScopeAuthorization scopeAuthorization;
 
     @Transactional
-    public RegionResponse create(CreateRegionRequest request) {
+    public RegionResponse create(
+            CreateRegionRequest request,
+            Authentication authentication
+    ) {
 
         Enterprise enterprise = enterpriseRepository.findById(
                 request.enterpriseId()
@@ -33,6 +40,13 @@ public class RegionService {
                         "Enterprise not found: " + request.enterpriseId()
                 )
         );
+
+        if (!scopeAuthorization.canAccessEnterprise(
+                authentication, enterprise.getId())) {
+            throw new AccessDeniedException(
+                    "You do not have access to this enterprise"
+            );
+        }
 
         if (!enterprise.isActive()) {
             throw new BusinessRuleViolationException(
@@ -63,7 +77,10 @@ public class RegionService {
     }
 
     @Transactional(readOnly = true)
-    public RegionResponse getById(UUID id) {
+    public RegionResponse getById(
+            UUID id,
+            Authentication authentication
+    ) {
 
         Region region = regionRepository.findById(id)
                 .orElseThrow(() ->
@@ -72,15 +89,31 @@ public class RegionService {
                         )
                 );
 
+        if (!scopeAuthorization.canAccessRegion(authentication, id)) {
+            throw new AccessDeniedException(
+                    "You do not have access to this region"
+            );
+        }
+
         return toResponse(region);
     }
 
     @Transactional(readOnly = true)
-    public List<RegionResponse> getByEnterprise(UUID enterpriseId) {
+    public List<RegionResponse> getByEnterprise(
+            UUID enterpriseId,
+            Authentication authentication
+    ) {
 
         if (!enterpriseRepository.existsById(enterpriseId)) {
             throw new ResourceNotFoundException(
                     "Enterprise not found: " + enterpriseId
+            );
+        }
+
+        if (!scopeAuthorization.canAccessEnterprise(
+                authentication, enterpriseId)) {
+            throw new AccessDeniedException(
+                    "You do not have access to this enterprise"
             );
         }
 

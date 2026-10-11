@@ -74,10 +74,6 @@ public class AttendanceAlertService {
                 continue;
             }
 
-            if (percentage.compareTo(thresholdPercent) >= 0) {
-                continue;
-            }
-
             int inserted = attendanceAlertRepository.insertIfAbsent(
                     aggregate.studentId(),
                     institutionId,

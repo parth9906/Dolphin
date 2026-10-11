@@ -109,7 +109,11 @@ unique per institution (`409` on duplicate). Errors `403`, `404`,
 - Status transitions restricted by the state machine above.
 - Editing allowed only for `APPLIED`/`UNDER_REVIEW`.
 - Enroll requires `ACCEPTED` and produces a `Student` plus `ENROLLED` status.
-- `@Version` optimistic locking on applications.
+- `@Version` optimistic locking on applications: concurrent status
+  transitions, edits, or enrollment attempts fail the stale writer with
+  `409 CONCURRENT_MODIFICATION` instead of silently overwriting. Enrollment is
+  atomic with student creation and the new enrollment record, so a failed
+  enrollment leaves no partially-created student or orphaned enrollment.
 
 ## F. Authorization matrix
 

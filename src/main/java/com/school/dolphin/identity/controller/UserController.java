@@ -3,6 +3,7 @@ package com.school.dolphin.identity.controller;
 import com.school.dolphin.identity.dto.CreateOrganizationScopeRequest;
 import com.school.dolphin.identity.dto.CreateUserRequest;
 import com.school.dolphin.identity.dto.OrganizationScopeResponse;
+import com.school.dolphin.identity.dto.UpdateUserRequest;
 import com.school.dolphin.identity.dto.UserResponse;
 import com.school.dolphin.identity.service.UserOrganizationScopeService;
 import com.school.dolphin.identity.service.UserRoleService;
@@ -39,6 +40,23 @@ public class UserController {
             @PathVariable UUID id
     ) {
         return userService.getById(id);
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('USER_UPDATE')")
+    public UserResponse update(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateUserRequest request
+    ) {
+        return userService.update(id, request);
+    }
+
+    @PatchMapping("/{id}/deactivate")
+    @PreAuthorize("hasAuthority('USER_DEACTIVATE')")
+    public UserResponse deactivate(
+            @PathVariable UUID id
+    ) {
+        return userService.deactivate(id);
     }
 
     @PostMapping("/{userId}/roles/{roleId}")

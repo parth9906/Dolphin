@@ -14,6 +14,11 @@ import java.util.UUID;
 public interface StaffAssignmentRepository
         extends JpaRepository<StaffAssignment, UUID> {
 
+    long countDistinctByInstitution_IdAndStatus(
+            UUID institutionId,
+            StaffAssignmentStatus status
+    );
+
     boolean existsByInstitution_IdAndEmployeeNumber(
             UUID institutionId,
             String employeeNumber

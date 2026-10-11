@@ -1,24 +1,28 @@
 # Staff Leave
 
-Status: **Partially Implemented** (staff leave only; student leave is not implemented)
+Status: **Implemented** (staff leave and student leave)
 
 [Shared conventions](../../../../../../../docs/api/README.md) apply.
 
 ## A. Module overview
 
-Owns staff leave requests, their review workflow and audit trail.
+Owns staff and student leave requests, their review workflow and audit trail.
 
 Included in V1: create leave request, list by institution/status, approve,
-reject, cancel, audit history.
+reject, cancel, audit history - for both staff and students.
 
-Excluded: student leave, leave-balance/entitlement accounting, leave types
-administration (the `leave_type` table is seeded, not exposed via API).
+Excluded: leave-balance/entitlement accounting, leave types administration
+(the `leave_type` table is seeded, not exposed via API), student self-service
+leave (students are currently managed on their behalf by institution-scoped
+staff).
 
-Dependencies: `staff` (`staffMemberId`), `organization`, `identity`, `timetable`
-(approved leave suppresses lesson occurrences).
+Dependencies: `staff` (`staffMemberId`), `student` (`studentId` and active
+enrollment), `academic`, `organization`, `identity`, `timetable` (approved
+staff leave suppresses lesson occurrences).
 
-Principal classes: `controller/StaffLeaveController`,
-`service/StaffLeaveService`, `entity/{StaffLeaveRequest,StaffLeaveAudit,LeaveType,LeaveRequestStatus}`.
+Principal classes: `controller/{StaffLeaveController,StudentLeaveController}`,
+`service/{StaffLeaveService,StudentLeaveService}`,
+`entity/{StaffLeaveRequest,StudentLeaveRequest,StaffLeaveAudit,StudentLeaveAudit,LeaveType,LeaveRequestStatus}`.
 
 ## B. API conventions
 
@@ -104,16 +108,42 @@ PENDING --cancel--> CANCELLED
 
 `APPROVED`, `REJECTED` and `CANCELLED` are terminal in V1.
 
+## S. Student leave
+
+Base path: `/api/v1/student-leave`. The workflow, state machine, error contract
+and audit behaviour mirror the staff module above; permissions are
+`STUDENT_LEAVE_CREATE`, `STUDENT_LEAVE_READ`, `STUDENT_LEAVE_REVIEW`,
+`STUDENT_LEAVE_CANCEL`, `STUDENT_LEAVE_AUDIT_READ` (all institution-scoped).
+
+| Method | Path | Purpose | Permission |
+|---|---|---|---|
+| POST | `/api/v1/student-leave` | Create leave for a student | `STUDENT_LEAVE_CREATE` |
+| GET | `/api/v1/student-leave?institutionId&status` | List by institution/status | `STUDENT_LEAVE_READ` |
+| POST | `/api/v1/student-leave/{leaveId}/approve` | Approve | `STUDENT_LEAVE_REVIEW` |
+| POST | `/api/v1/student-leave/{leaveId}/reject` | Reject | `STUDENT_LEAVE_REVIEW` |
+| POST | `/api/v1/student-leave/{leaveRequestId}/cancel` | Cancel | `STUDENT_LEAVE_CANCEL` |
+| GET | `/api/v1/student-leave/{leaveId}/audit` | Audit trail | `STUDENT_LEAVE_AUDIT_READ` |
+
+`CreateStudentLeaveRequest`: `studentId`, `institutionId`, `leaveTypeId`,
+`startDate`, `endDate`, `reason` (<= 1000). Rules: the student must be active,
+belong to the requested institution, and hold an active enrollment; overlapping
+`PENDING`/`APPROVED` leave for the same student is rejected with
+`409 DUPLICATE_RESOURCE`. `ReviewStudentLeaveRequest`: `comment` (required,
+<= 1000). Responses reuse the staff shapes with `studentId` in place of
+`staffMemberId`.
+
 ## I. Dependencies and integrations
 
 - `timetable`: approved leave suppresses generated lesson occurrences.
 - `staff`: the requesting staff member and institution.
+- `student`/`academic`: the requesting student and their active enrollment.
 
 ## J. Open issues and implementation gaps
 
-- No student leave (V1 "Leave Management" is only partially covered).
+- No student self-service portal endpoints (leave is created and reviewed on
+  the student's behalf by institution-scoped staff).
 - `cancel` permission is separate from `create`; there is no ownership rule
-  requiring the canceller to be the requester (any holder of
-  `STAFF_LEAVE_CANCEL` in scope can cancel).
+  requiring the canceller to be the requester (any holder of the cancel
+  permission in scope can cancel).
 - No leave-type administration endpoint; types are DB-seeded.
 - No leave-balance accounting or entitlement checks.

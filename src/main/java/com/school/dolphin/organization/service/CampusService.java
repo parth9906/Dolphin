@@ -3,6 +3,7 @@ package com.school.dolphin.organization.service;
 import com.school.dolphin.common.exception.BusinessRuleViolationException;
 import com.school.dolphin.common.exception.DuplicateResourceException;
 import com.school.dolphin.common.exception.ResourceNotFoundException;
+import com.school.dolphin.identity.security.OrganizationScopeAuthorization;
 import com.school.dolphin.organization.dto.CampusResponse;
 import com.school.dolphin.organization.dto.CreateCampusRequest;
 import com.school.dolphin.organization.entity.Campus;
@@ -10,6 +11,8 @@ import com.school.dolphin.organization.entity.Institution;
 import com.school.dolphin.organization.repository.CampusRepository;
 import com.school.dolphin.organization.repository.InstitutionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,9 +24,13 @@ public class CampusService {
 
     private final CampusRepository campusRepository;
     private final InstitutionRepository institutionRepository;
+    private final OrganizationScopeAuthorization scopeAuthorization;
 
     @Transactional
-    public CampusResponse create(CreateCampusRequest request) {
+    public CampusResponse create(
+            CreateCampusRequest request,
+            Authentication authentication
+    ) {
 
         Institution institution = institutionRepository.findById(request.institutionId())
                 .orElseThrow(() ->
@@ -31,6 +38,13 @@ public class CampusService {
                                 "Institution not found: " + request.institutionId()
                         )
                 );
+
+        if (!scopeAuthorization.canAccessInstitution(
+                authentication, institution.getId())) {
+            throw new AccessDeniedException(
+                    "You do not have access to this institution"
+            );
+        }
 
         if (!institution.isActive()) {
             throw new BusinessRuleViolationException(
@@ -62,7 +76,10 @@ public class CampusService {
     }
 
     @Transactional(readOnly = true)
-    public CampusResponse getById(UUID id) {
+    public CampusResponse getById(
+            UUID id,
+            Authentication authentication
+    ) {
 
         Campus campus = campusRepository.findById(id)
                 .orElseThrow(() ->
@@ -70,6 +87,12 @@ public class CampusService {
                                 "Campus not found: " + id
                         )
                 );
+
+        if (!scopeAuthorization.canAccessCampus(authentication, id)) {
+            throw new AccessDeniedException(
+                    "You do not have access to this campus"
+            );
+        }
 
         return toResponse(campus);
     }

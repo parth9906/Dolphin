@@ -86,4 +86,18 @@ public interface AttendanceRepository
             @Param("from") LocalDate from,
             @Param("to") LocalDate to
     );
+
+    @Query("""
+    SELECT a.status, COUNT(a.id)
+    FROM AttendanceRecord a
+    JOIN a.student s
+    WHERE s.institution.id = :institutionId
+      AND a.attendanceDate BETWEEN :from AND :to
+    GROUP BY a.status
+    """)
+    List<Object[]> countStatusesForInstitutionAndRange(
+            @Param("institutionId") UUID institutionId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to
+    );
 }
