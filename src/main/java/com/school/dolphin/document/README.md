@@ -61,14 +61,6 @@ text; numbering is a proposal).
 - Students can read only their own documents via the student portal.
 - Certificates (bonafide, transfer, character) are simply named templates.
 
-## E. Proposed behaviour (unapproved)
-
-- Templates are institution-scoped and versioned.
-- Issuing renders a template for a student (using data from `student`,
-  `academic`, `assessment`) and stores a generated artifact, returning metadata.
-- Students/parents can read their own issued documents only.
-- Certificates (bonafide, transfer, character) are simply named templates.
-
 ## F. Validation and business rules
 
 - Unique template code per institution.
@@ -106,5 +98,7 @@ Object storage is external and undecided.
 - No `document_number`/monotonic numbering or issuance audit trail yet.
 - No storage technology decision (object storage vs local filesystem).
 - Templates/rendering technology: text placeholders only (HTML->PDF undecided).
+- Template versioning and parent-portal document reads are proposed but not
+  implemented.
 - Open question (product decision): which documents are in scope for V1
   (bonafide, transfer certificate, character certificate, ID card)?

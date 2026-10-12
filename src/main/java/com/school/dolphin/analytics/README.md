@@ -22,16 +22,21 @@ the modules that own the data:
 - Notification outbox summary lives in `notification`
   (`/api/v1/notification-outbox/summary`).
 
-A dedicated analytics module (further aggregated dashboards across modules) is
-**not yet implemented**. Everything else in section D is a proposal.
+Only the institution summary endpoint ships in the dedicated `analytics`
+package today. Further aggregated cross-module dashboards are **not yet
+implemented**; the sections marked **proposed** below describe intended,
+unapproved behaviour.
 
-## D. Implemented endpoint
+## B. Implemented endpoint
 
 ### GET /api/v1/analytics/institution-summary
 
 - Query: `institutionId` (required), `fromDate` (required), `toDate` (required,
   range <= 366 days). Auth: bearer. Permission: `ANALYTICS_READ`.
 - Scope: institution scope enforced; `403` outside the caller's scope.
+- Errors: `400` for missing/invalid query parameters, `404` for an unknown
+  institution, `422 BUSINESS_RULE_VIOLATION` when the range is missing, reversed
+  or longer than 366 days.
 - Response `200` `AnalyticsInstitutionSummaryResponse`:
   `{ institutionId, fromDate, toDate, activeStudents, activeStaff,
   activeEnrollments, attendancePresent, attendanceAbsent, attendanceLate,
@@ -43,7 +48,7 @@ A dedicated analytics module (further aggregated dashboards across modules) is
   `attendance` module formula (eligible = present + absent + late; percentage =
   (present + late) / eligible, rounded half-up, `0.00` when no records).
 
-## B. Proposal: conventions
+## C. Proposal: conventions
 
 - Base path (proposed): `/api/v1/analytics`.
 - Authentication: bearer.
@@ -55,7 +60,7 @@ A dedicated analytics module (further aggregated dashboards across modules) is
   capped, or paginated, to avoid unbounded scans.
 - Timestamps: aggregates should echo the requested range in ISO-8601.
 
-## C. Proposal: endpoint inventory
+## D. Proposal: endpoint inventory
 
 | Method | Path (proposed) | Purpose | Permission (proposed) |
 |---|---|---|---|
@@ -68,51 +73,56 @@ A dedicated analytics module (further aggregated dashboards across modules) is
 
 All are **proposed**; none exist today.
 
-## D. Proposed behaviour (all unapproved)
+## E. Proposed behaviour (all unapproved)
 
 Each proposed endpoint would accept `institutionId` (required), optional
 `campusId`, and a `fromDate`/`toDate` range, and return aggregate counts/series
 with an `institutionId`/`campusId`/range echo. Authorization would reuse the
 existing institution/campus scope check.
 
-## E. Existing (implemented) analytics you can use today
+## F. Existing (implemented) analytics you can use today
 
-Because the proposed module does not exist, use the module-owned endpoints above.
-They are the source of truth for current analytics behaviour and are documented
-in their own READMEs.
+Beyond `institution-summary`, current analytics live inside the modules that own
+the data (the endpoints listed in section A). Those module-owned endpoints are
+the source of truth for their behaviour and are documented in their own READMEs.
 
-## F. Validation and business rules
+## G. Validation and business rules
 
-No rules exist yet for the proposed module. The existing module-owned analytics
-enforce institution scope and (for lesson analytics) require `institutionId`,
-`sectionId` and a date range.
+The implemented `institution-summary` endpoint enforces institution scope and a
+maximum date range of 366 days. Module-owned analytics enforce their own rules
+and (for lesson analytics) require `institutionId`, `sectionId` and a date range.
 
-## G. Authorization matrix (proposed)
+## H. Authorization matrix
 
 | Permission | Read |
 |---|---|
 | `ANALYTICS_READ` | aggregate dashboards |
 | `ANALYTICS_EXPORT` (proposed) | export (not implemented) |
 
-## H. Error contract (proposed)
+## I. Error contract
 
 Standard codes; `403` for out-of-scope institutions, `422` for invalid ranges.
 
-## I. State transitions
+## J. State transitions
 
 Not applicable (read-only).
 
-## J. Dependencies and integrations (proposed)
+## K. Dependencies and integrations
 
-Would read from `attendance`, `assessment`, `academic`, `hostel`, `inventory`,
-`mess`, `admissions`.
+The implemented endpoint reads `student`, `staff`, `academic`
+(`student_enrollment`) and `attendance`, and uses `organization` for scope and
+`identity` for the `ANALYTICS_READ` permission. A broader analytics module would
+additionally read `assessment`, `hostel`, `inventory`, `mess` and `admissions`
+(proposed).
 
-## K. Open issues and implementation gaps
+## L. Open issues and implementation gaps
 
-- The dedicated analytics package is empty; there is no cross-module dashboard.
-- Analytics today is fragmented across module-owned endpoints.
-- An `ANALYTICS_READ`/`ANALYTICS_EXPORT` permission does not exist in the
-  database yet; adding analytics requires a migration to define and grant it.
+- The dedicated `analytics` package ships only
+  `GET /api/v1/analytics/institution-summary`; there is no other cross-module
+  dashboard.
+- Analytics beyond that endpoint is fragmented across module-owned endpoints.
+- `ANALYTICS_READ` exists (migration `V79`) and is granted to `PLATFORM_ADMIN`;
+  `ANALYTICS_EXPORT` is not defined.
 - Open question (product decision): should analytics be a separate module, or
   should each owning module expose its own aggregates? The current code favours
   the latter.
