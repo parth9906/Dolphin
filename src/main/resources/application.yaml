@@ -2,9 +2,9 @@ spring:
   application:
     name: dolphin
   datasource:
-    url: jdbc:postgresql://localhost:5432/dolphin
-    username: springuser
-    password: springpassword
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   data:
     web:
       pageable:
