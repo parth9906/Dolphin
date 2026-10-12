@@ -15,13 +15,14 @@ public interface UserRoleRepository
     boolean existsByUserIdAndRoleId(UUID userId, UUID roleId);
 
     @Query("""
-        SELECT ur
+        SELECT DISTINCT r.code
         FROM UserRole ur
-        JOIN FETCH ur.role r
+        JOIN ur.role r
         WHERE ur.user.id = :userId
           AND r.active = true
+        ORDER BY r.code
     """)
-    List<UserRole> findActiveRolesByUserId(
+    List<String> findActiveRoleCodesByUserId(
             @Param("userId") UUID userId
     );
 }

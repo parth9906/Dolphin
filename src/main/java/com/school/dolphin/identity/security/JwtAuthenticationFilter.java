@@ -1,53 +1,43 @@
 package com.school.dolphin.identity.security;
 
-import com.school.dolphin.identity.entity.UserAccount;
-import com.school.dolphin.identity.repository.UserAccountRepository;
 import com.school.dolphin.identity.service.JwtService;
-import io.jsonwebtoken.Claims;
+import com.school.dolphin.identity.service.JwtService.AccessTokenClaims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.school.dolphin.identity.entity.RolePermission;
-import com.school.dolphin.identity.entity.UserRole;
-import com.school.dolphin.identity.repository.RolePermissionRepository;
-import com.school.dolphin.identity.repository.UserRoleRepository;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
+/**
+ * Authenticates a request purely from the signed access token. The token is
+ * verified locally (signature, expiration, issuer, audience) and the principal
+ * plus authorities are built from its claims; this filter performs no database
+ * access.
+ */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtService jwtService;
-    private final UserAccountRepository userAccountRepository;
-    private final UserRoleRepository userRoleRepository;
-    private final RolePermissionRepository rolePermissionRepository;
+    private static final String AUTHORIZATION_HEADER = "Authorization";
+    private static final String BEARER_PREFIX = "Bearer ";
+    private static final String ROLE_PREFIX = "ROLE_";
 
-    public JwtAuthenticationFilter(
-            JwtService jwtService,
-            UserAccountRepository userAccountRepository,
-            UserRoleRepository userRoleRepository,
-            RolePermissionRepository rolePermissionRepository
-    ) {
+    private final JwtService jwtService;
+
+    public JwtAuthenticationFilter(JwtService jwtService) {
         this.jwtService = jwtService;
-        this.userAccountRepository = userAccountRepository;
-        this.userRoleRepository = userRoleRepository;
-        this.rolePermissionRepository = rolePermissionRepository;
     }
 
     @Override
@@ -58,45 +48,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         String authorizationHeader =
-                request.getHeader("Authorization");
+                request.getHeader(AUTHORIZATION_HEADER);
 
+        // Missing or non-bearer credentials leave the request unauthenticated;
+        // public endpoints still succeed and protected ones get 401 later.
         if (authorizationHeader == null
-                || !authorizationHeader.startsWith("Bearer ")) {
+                || !authorizationHeader.startsWith(BEARER_PREFIX)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = authorizationHeader.substring(7);
+        String token = authorizationHeader.substring(BEARER_PREFIX.length());
 
         try {
-            Claims claims = jwtService.parseToken(token);
-            UUID userId = UUID.fromString(claims.getSubject());
+            AccessTokenClaims claims = jwtService.parseAccessToken(token);
 
-            Optional<UserAccount> optionalUser =
-                    userAccountRepository.findById(userId);
-
-            if (optionalUser.isPresent()
-                    && optionalUser.get().isActive()
-                    && SecurityContextHolder.getContext()
+            if (SecurityContextHolder.getContext()
                     .getAuthentication() == null) {
 
-                UserAccount user = optionalUser.get();
-
                 AuthenticatedUser principal = new AuthenticatedUser(
-                        user.getId(),
-                        user.getUsername()
+                        claims.userId(),
+                        claims.username()
                 );
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
                                 principal,
                                 null,
-                                new ArrayList<>(loadAuthorities(user.getId()))
+                                toAuthorities(claims)
                         );
 
                 authentication.setDetails(
-                        new org.springframework.security.web.authentication
-                                .WebAuthenticationDetailsSource()
+                        new WebAuthenticationDetailsSource()
                                 .buildDetails(request)
                 );
 
@@ -112,38 +95,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
+    private List<GrantedAuthority> toAuthorities(AccessTokenClaims claims) {
 
-    private Set<GrantedAuthority> loadAuthorities(UUID userId) {
+        Set<GrantedAuthority> authorities = new LinkedHashSet<>();
 
-        Set<GrantedAuthority> authorities = new HashSet<>();
-
-        List<UserRole> userRoles =
-                userRoleRepository.findActiveRolesByUserId(userId);
-
-        for (UserRole userRole : userRoles) {
-
-            var role = userRole.getRole();
-
+        for (String roleCode : claims.roleCodes()) {
             // Example: ROLE_TEACHER
             authorities.add(
-                    new SimpleGrantedAuthority("ROLE_" + role.getCode())
+                    new SimpleGrantedAuthority(ROLE_PREFIX + roleCode)
             );
-
-            List<RolePermission> rolePermissions =
-                    rolePermissionRepository
-                            .findActivePermissionsByRoleId(role.getId());
-
-            for (RolePermission rolePermission : rolePermissions) {
-
-                // Example: STUDENT_READ
-                authorities.add(
-                        new SimpleGrantedAuthority(
-                                rolePermission.getPermission().getCode()
-                        )
-                );
-            }
         }
 
-        return authorities;
+        for (String permissionCode : claims.permissionCodes()) {
+            // Example: STUDENT_READ
+            authorities.add(new SimpleGrantedAuthority(permissionCode));
+        }
+
+        return new ArrayList<>(authorities);
     }
 }

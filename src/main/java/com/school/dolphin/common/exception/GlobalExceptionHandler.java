@@ -70,6 +70,23 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidRefreshToken(
+            InvalidRefreshTokenException exception,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponse(
+                        OffsetDateTime.now(),
+                        HttpStatus.UNAUTHORIZED.value(),
+                        "INVALID_REFRESH_TOKEN",
+                        "The refresh session is invalid or has expired. "
+                                + "Sign in again.",
+                        request.getRequestURI()
+                ));
+    }
+
     @ExceptionHandler({
             HttpMessageNotReadableException.class,
             MethodArgumentTypeMismatchException.class

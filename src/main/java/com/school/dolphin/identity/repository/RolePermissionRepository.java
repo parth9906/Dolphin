@@ -17,14 +17,25 @@ public interface RolePermissionRepository
             UUID permissionId
     );
 
+    /**
+     * Effective permission codes across every active role held by the user, in
+     * a single query (no per-role loop). Inactive roles and inactive
+     * permissions are excluded before the codes are placed in a token.
+     */
     @Query("""
-        SELECT rp
+        SELECT DISTINCT p.code
         FROM RolePermission rp
-        JOIN FETCH rp.permission p
-        WHERE rp.role.id = :roleId
-          AND p.active = true
+        JOIN rp.permission p
+        WHERE p.active = true
+          AND rp.role.id IN (
+              SELECT ur.role.id
+              FROM UserRole ur
+              WHERE ur.user.id = :userId
+                AND ur.role.active = true
+          )
+        ORDER BY p.code
     """)
-    List<RolePermission> findActivePermissionsByRoleId(
-            @Param("roleId") UUID roleId
+    List<String> findEffectivePermissionCodesByUserId(
+            @Param("userId") UUID userId
     );
 }

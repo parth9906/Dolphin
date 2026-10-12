@@ -33,7 +33,13 @@ Token properties (see `identity/README.md`):
   application fails fast at startup if it is missing, not valid base64, or
   shorter than 256 bits.
 - Lifetime: 900 seconds (15 minutes), from `dolphin.security.jwt.expiration-ms`.
-- Claims: `sub` (user id), `username`, `iat`, `exp`.
+- Claims: `sub` (user id), `username`, `roles`, `permissions`, `iss`, `aud`,
+  `iat`, `exp`, `jti`.
+- `roles` and `permissions` are the caller's effective role and permission
+  codes captured at issue/refresh time. Requests are authenticated locally from
+  these signed claims: the filter verifies signature, expiration, issuer and
+  audience and performs **no** database access. Client-supplied roles or
+  permissions are never trusted.
 
 Authorities attached to the authenticated principal are:
 
@@ -41,8 +47,31 @@ Authorities attached to the authenticated principal are:
 - The raw permission code for every active permission of those roles, for
   example `STUDENT_READ`.
 
-Only *active* users with *active* roles/permissions receive authorities. A token
-for a deactivated user is ignored (the request proceeds unauthenticated).
+Only *active* users with *active* roles/permissions receive authorities, and
+only at token-issue time. Because access tokens are not re-checked against the
+database, deactivation or a permission change takes effect on the next refresh
+at the latest, within the 15-minute access-token lifetime. This staleness
+ceiling is an accepted trade-off; domain checks below are always live.
+
+### Refresh and logout
+
+`POST /api/v1/auth/login` returns a short-lived access token and a long-lived
+refresh token.
+
+- `POST /api/v1/auth/refresh` exchanges a refresh token for a new access token
+  and a **rotated** refresh token. Reusing an already-rotated token revokes the
+  whole session family.
+- `POST /api/v1/auth/logout` revokes the session.
+- Only the SHA-256 hash of a refresh token is stored. Refresh always reloads
+  current account status and effective permissions; deactivated accounts are
+  rejected.
+- Refresh sessions are revoked on logout, password change and account
+  deactivation.
+
+Refresh tokens are currently exchanged in the JSON request/response body,
+consistent with the existing bearer-token API. A future browser client should
+adopt an `HttpOnly`, `Secure`, `SameSite` cookie with CSRF protection; that
+decision is tracked in `identity/README.md`.
 
 ### Public endpoints
 
@@ -50,7 +79,9 @@ Only these endpoints are reachable without a token:
 
 | Method | Path | Purpose |
 |---|---|---|
-| POST | `/api/v1/auth/login` | Authenticate and obtain a JWT |
+| POST | `/api/v1/auth/login` | Authenticate; obtain access + refresh token |
+| POST | `/api/v1/auth/refresh` | Rotate a refresh token and obtain a new access token |
+| POST | `/api/v1/auth/logout` | Revoke a refresh session |
 | POST | `/api/v1/guardian-invitations/accept` | Accept a guardian invitation and create a portal account |
 
 Everything else requires an authenticated principal (`anyRequest().authenticated()`).
@@ -77,6 +108,12 @@ Scope semantics (`OrganizationScopeType`):
 
 Never trust client-supplied user ids as proof of identity. Portal endpoints
 resolve the acting student/guardian from the authenticated principal.
+
+Permission checks (`hasAuthority(...)`) use only the authorities embedded in the
+access token and therefore do not query PostgreSQL. Everything else in this
+section — organization scope, student ownership, guardian relationships,
+teaching assignments and other resource checks — remains database-backed and is
+unaffected by token issuance.
 
 ## Common pagination, filtering and sorting
 
@@ -148,6 +185,7 @@ Application errors raised through the global exception handler use
 | `VALIDATION_ERROR` | 400 | Bean Validation failures on a request body |
 | `MALFORMED_REQUEST` | 400 | Unreadable body or wrong parameter type |
 | `INVALID_CREDENTIALS` | 401 | Failed login (generic message) |
+| `INVALID_REFRESH_TOKEN` | 401 | Unknown, expired, revoked or reused refresh token |
 | `ACCESS_DENIED` | 403 | Missing permission or failed scope check |
 | `RESOURCE_NOT_FOUND` | 404 | Missing entity |
 | `DUPLICATE_RESOURCE` | 409 | Unique-code/business duplicate |

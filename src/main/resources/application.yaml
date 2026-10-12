@@ -28,7 +28,13 @@ dolphin:
       # No default: the application fails fast (see JwtService) if JWT_SECRET is
       # not supplied, so a committed key can never sign production tokens.
       secret: ${JWT_SECRET:}
+      # Access-token lifetime. 15 minutes is the accepted authorization
+      # staleness ceiling: deactivation/permission changes propagate on the
+      # next refresh, not on every request.
       expiration-ms: 900000
+      refresh-expiration-ms: ${JWT_REFRESH_EXPIRATION_MS:2592000000}
+      issuer: dolphin
+      audience: dolphin-api
 
 app:
   notification:

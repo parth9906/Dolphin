@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
@@ -25,6 +26,7 @@ public class UserService {
     private final UserAccountRepository userAccountRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticatedUserResolver authenticatedUserResolver;
+    private final RefreshTokenService refreshTokenService;
 
     @Transactional
     public UserResponse create(CreateUserRequest request) {
@@ -111,6 +113,11 @@ public class UserService {
             userAccountRepository.save(user);
         }
 
+        // Existing access tokens remain valid until they expire (<= 15 min),
+        // but every refresh session is revoked immediately.
+        refreshTokenService.revokeAllForUser(
+                user.getId(), OffsetDateTime.now());
+
         return toResponse(user);
     }
 
@@ -133,6 +140,10 @@ public class UserService {
                 passwordEncoder.encode(request.newPassword()));
 
         userAccountRepository.save(user);
+
+        // Force re-authentication of every refresh session for this account.
+        refreshTokenService.revokeAllForUser(
+                user.getId(), OffsetDateTime.now());
     }
 
     private UserResponse toResponse(UserAccount user) {
