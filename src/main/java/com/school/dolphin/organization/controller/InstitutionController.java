@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -36,5 +37,14 @@ public class InstitutionController {
             Authentication authentication
     ) {
         return institutionService.getById(id, authentication);
+    }
+
+    @GetMapping("/by-cluster/{clusterId}")
+    @PreAuthorize("hasAuthority('INSTITUTION_READ')")
+    public List<InstitutionResponse> getByCluster(
+            @PathVariable UUID clusterId,
+            Authentication authentication
+    ) {
+        return institutionService.getByCluster(clusterId, authentication);
     }
 }

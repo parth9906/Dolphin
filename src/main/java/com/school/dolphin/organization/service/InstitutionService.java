@@ -10,12 +10,14 @@ import com.school.dolphin.organization.entity.Cluster;
 import com.school.dolphin.organization.entity.Institution;
 import com.school.dolphin.organization.repository.ClusterRepository;
 import com.school.dolphin.organization.repository.InstitutionRepository;
+import com.school.dolphin.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -39,7 +41,7 @@ public class InstitutionService {
                         )
                 );
 
-        if (!scopeAuthorization.canAccessCluster(
+        if (!SecurityUtils.isPlatformAdmin(authentication) && !scopeAuthorization.canAccessCluster(
                 authentication, cluster.getId())) {
             throw new AccessDeniedException(
                     "You do not have access to this cluster"
@@ -107,5 +109,31 @@ public class InstitutionService {
                 institution.getInstitutionType(),
                 institution.isActive()
         );
+    }
+
+    @Transactional(readOnly = true)
+    public List<InstitutionResponse> getByCluster(
+            UUID clusterId,
+            Authentication authentication
+    ) {
+        Cluster cluster = clusterRepository.findById(clusterId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Cluster not found: " + clusterId
+                        )
+                );
+
+        if (!SecurityUtils.isPlatformAdmin(authentication)
+                && !scopeAuthorization.canAccessCluster(authentication, clusterId)) {
+            throw new AccessDeniedException(
+                    "You do not have access to this cluster"
+            );
+        }
+
+        return institutionRepository
+                .findAllByCluster_IdAndActiveTrue(clusterId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 }

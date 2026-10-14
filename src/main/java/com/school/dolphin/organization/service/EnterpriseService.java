@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -72,5 +73,26 @@ public class EnterpriseService {
                 enterprise.getName(),
                 enterprise.isActive()
         );
+    }
+
+    @Transactional(readOnly = true)
+    public List<EnterpriseResponse> getAllActive(
+            Authentication authentication
+    ) {
+        return enterpriseRepository.findAllByActiveTrue()
+                .stream()
+                .filter(enterprise ->
+                        scopeAuthorization.canAccessEnterprise(
+                                authentication,
+                                enterprise.getId()
+                        )
+                )
+                .map(enterprise -> new EnterpriseResponse(
+                        enterprise.getId(),
+                        enterprise.getCode(),
+                        enterprise.getName(),
+                        enterprise.isActive()
+                ))
+                .toList();
     }
 }

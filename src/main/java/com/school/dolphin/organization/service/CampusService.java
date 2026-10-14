@@ -10,12 +10,14 @@ import com.school.dolphin.organization.entity.Campus;
 import com.school.dolphin.organization.entity.Institution;
 import com.school.dolphin.organization.repository.CampusRepository;
 import com.school.dolphin.organization.repository.InstitutionRepository;
+import com.school.dolphin.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -39,7 +41,7 @@ public class CampusService {
                         )
                 );
 
-        if (!scopeAuthorization.canAccessInstitution(
+        if (!SecurityUtils.isPlatformAdmin(authentication) && !scopeAuthorization.canAccessInstitution(
                 authentication, institution.getId())) {
             throw new AccessDeniedException(
                     "You do not have access to this institution"
@@ -107,5 +109,33 @@ public class CampusService {
                 campus.getAddress(),
                 campus.isActive()
         );
+    }
+
+    @Transactional(readOnly = true)
+    public List<CampusResponse> getByInstitution(
+            UUID institutionId,
+            Authentication authentication
+    ) {
+        Institution institution = institutionRepository
+                .findById(institutionId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "Institution not found: " + institutionId
+                        )
+                );
+
+        if (!SecurityUtils.isPlatformAdmin(authentication)
+                && !scopeAuthorization.canAccessInstitution(
+                authentication, institutionId)) {
+            throw new AccessDeniedException(
+                    "You do not have access to this institution"
+            );
+        }
+
+        return campusRepository
+                .findAllByInstitution_IdAndActiveTrue(institutionId)
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 }

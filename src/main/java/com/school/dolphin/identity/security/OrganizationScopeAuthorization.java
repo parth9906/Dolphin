@@ -14,6 +14,7 @@ import com.school.dolphin.organization.repository.CampusRepository;
 import com.school.dolphin.organization.repository.EnterpriseRepository;
 import com.school.dolphin.organization.repository.InstitutionRepository;
 import com.school.dolphin.organization.repository.RegionRepository;
+import com.school.dolphin.security.SecurityUtils;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,6 +53,9 @@ public class OrganizationScopeAuthorization {
             Authentication authentication,
             UUID enterpriseId
     ) {
+        if (SecurityUtils.isPlatformAdmin(authentication)) {
+            return true;
+        }
         UUID userId = getAuthenticatedUserId(authentication);
 
         if (userId == null || enterpriseId == null) {
@@ -70,12 +74,62 @@ public class OrganizationScopeAuthorization {
                 scopeRepository.findByUser_Id(userId);
 
         for (UserOrganizationScope scope : scopes) {
-            if (scope.getScopeType() == OrganizationScopeType.ENTERPRISE
-                    && enterprise.getId().equals(scope.getScopeId())) {
-                return true;
+            UUID scopeId = scope.getScopeId();
+
+            switch (scope.getScopeType()) {
+                case ENTERPRISE -> {
+                    if (enterprise.getId().equals(scopeId)) {
+                        return true;
+                    }
+                }
+                case REGION -> {
+                    Region region = regionRepository.findById(scopeId)
+                            .orElse(null);
+
+                    if (region != null
+                            && region.getEnterprise() != null
+                            && region.getEnterprise().getId().equals(enterpriseId)) {
+                        return true;
+                    }
+                }
+                case CLUSTER -> {
+                    Cluster cluster = clusterRepository.findById(scopeId)
+                            .orElse(null);
+
+                    if (cluster != null
+                            && cluster.getRegion() != null
+                            && cluster.getRegion().getEnterprise() != null
+                            && cluster.getRegion().getEnterprise()
+                            .getId().equals(enterpriseId)) {
+                        return true;
+                    }
+                }
+                case INSTITUTION -> {
+                    Institution institution = institutionRepository
+                            .findById(scopeId).orElse(null);
+
+                    if (institution != null
+                            && institution.getCluster() != null
+                            && institution.getCluster().getRegion() != null
+                            && institution.getCluster().getRegion().getEnterprise()
+                            .getId().equals(enterpriseId)) {
+                        return true;
+                    }
+                }
+                case CAMPUS -> {
+                    Campus campus = campusRepository.findById(scopeId)
+                            .orElse(null);
+
+                    if (campus != null
+                            && campus.getInstitution() != null
+                            && campus.getInstitution().getCluster() != null
+                            && campus.getInstitution().getCluster().getRegion()
+                            .getEnterprise().getId().equals(enterpriseId)) {
+                        return true;
+                    }
+                }
             }
         }
-
         return false;
     }
 
@@ -84,6 +138,9 @@ public class OrganizationScopeAuthorization {
             Authentication authentication,
             UUID regionId
     ) {
+        if (SecurityUtils.isPlatformAdmin(authentication)) {
+            return true;
+        }
         UUID userId = getAuthenticatedUserId(authentication);
 
         if (userId == null || regionId == null) {
@@ -131,6 +188,10 @@ public class OrganizationScopeAuthorization {
             Authentication authentication,
             UUID clusterId
     ) {
+        if (SecurityUtils.isPlatformAdmin(authentication)) {
+            return true;
+        }
+
         UUID userId = getAuthenticatedUserId(authentication);
 
         if (userId == null || clusterId == null) {
@@ -189,6 +250,10 @@ public class OrganizationScopeAuthorization {
             Authentication authentication,
             UUID institutionId
     ) {
+        if (SecurityUtils.isPlatformAdmin(authentication)) {
+            return true;
+        }
+
         UUID userId = getAuthenticatedUserId(authentication);
 
         if (userId == null || institutionId == null) {
@@ -246,6 +311,10 @@ public class OrganizationScopeAuthorization {
             Authentication authentication,
             UUID campusId
     ) {
+        if (SecurityUtils.isPlatformAdmin(authentication)) {
+            return true;
+        }
+
         UUID userId = getAuthenticatedUserId(authentication);
 
         if (userId == null || campusId == null) {

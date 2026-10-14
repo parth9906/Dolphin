@@ -10,6 +10,7 @@ import com.school.dolphin.organization.entity.Cluster;
 import com.school.dolphin.organization.entity.Region;
 import com.school.dolphin.organization.repository.ClusterRepository;
 import com.school.dolphin.organization.repository.RegionRepository;
+import com.school.dolphin.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -40,7 +41,7 @@ public class ClusterService {
                         )
                 );
 
-        if (!scopeAuthorization.canAccessRegion(
+        if (!SecurityUtils.isPlatformAdmin(authentication) && !scopeAuthorization.canAccessRegion(
                 authentication, region.getId())) {
             throw new AccessDeniedException(
                     "You do not have access to this region"

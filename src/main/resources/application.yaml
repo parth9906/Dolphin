@@ -17,6 +17,8 @@ spring:
     properties:
       hibernate:
         format_sql: true
+server:
+  port: ${PORT:8080}
 
 logging:
   level:

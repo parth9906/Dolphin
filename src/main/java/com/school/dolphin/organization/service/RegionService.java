@@ -10,6 +10,7 @@ import com.school.dolphin.organization.entity.Enterprise;
 import com.school.dolphin.organization.entity.Region;
 import com.school.dolphin.organization.repository.EnterpriseRepository;
 import com.school.dolphin.organization.repository.RegionRepository;
+import com.school.dolphin.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -32,7 +33,6 @@ public class RegionService {
             CreateRegionRequest request,
             Authentication authentication
     ) {
-
         Enterprise enterprise = enterpriseRepository.findById(
                 request.enterpriseId()
         ).orElseThrow(() ->
@@ -41,7 +41,7 @@ public class RegionService {
                 )
         );
 
-        if (!scopeAuthorization.canAccessEnterprise(
+        if (!SecurityUtils.isPlatformAdmin(authentication) && !scopeAuthorization.canAccessEnterprise(
                 authentication, enterprise.getId())) {
             throw new AccessDeniedException(
                     "You do not have access to this enterprise"

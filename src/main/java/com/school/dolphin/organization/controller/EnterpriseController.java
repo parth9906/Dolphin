@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -35,5 +36,13 @@ public class EnterpriseController {
             Authentication authentication
     ) {
         return enterpriseService.getById(id, authentication);
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAuthority('ENTERPRISE_READ')")
+    public List<EnterpriseResponse> getAll(
+            Authentication authentication
+    ) {
+        return enterpriseService.getAllActive(authentication);
     }
 }
