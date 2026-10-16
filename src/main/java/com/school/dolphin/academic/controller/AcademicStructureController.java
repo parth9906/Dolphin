@@ -44,6 +44,16 @@ public class AcademicStructureController {
         return service.createClass(request, authentication);
     }
 
+    @PutMapping("/classes/{schoolClassId}")
+    @PreAuthorize("hasAuthority('CLASS_UPDATE')")
+    public UUID updateClass(
+            @PathVariable UUID schoolClassId,
+            @Valid @RequestBody UpdateSchoolClassRequest request,
+            Authentication authentication
+    ) {
+        return service.updateClass(schoolClassId, request, authentication);
+    }
+
     @PostMapping("/sections")
     @PreAuthorize("hasAuthority('SECTION_CREATE')")
     public UUID createSection(

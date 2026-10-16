@@ -10,7 +10,14 @@ import com.school.dolphin.identity.dto.UserResponse;
 import com.school.dolphin.identity.entity.UserAccount;
 import com.school.dolphin.identity.security.AuthenticatedUserResolver;
 import com.school.dolphin.identity.repository.UserAccountRepository;
+import com.school.dolphin.identity.security.OrganizationScopeAuthorization;
+import com.school.dolphin.student.entity.Student;
+import com.school.dolphin.student.repository.StudentRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,6 +34,8 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticatedUserResolver authenticatedUserResolver;
     private final RefreshTokenService refreshTokenService;
+    private final StudentRepository studentRepository;
+    private final OrganizationScopeAuthorization scopeAuthorization;
 
     @Transactional
     public UserResponse create(CreateUserRequest request) {
@@ -144,6 +153,46 @@ public class UserService {
         // Force re-authentication of every refresh session for this account.
         refreshTokenService.revokeAllForUser(
                 user.getId(), OffsetDateTime.now());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<UserResponse> searchEligibleAccounts(
+            UUID studentId,
+            String search,
+            Pageable pageable,
+            Authentication authentication
+    ) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Student not found"));
+
+        if (!student.isActive()) {
+            throw new BusinessRuleViolationException(
+                    "Cannot link an account to an inactive student");
+        }
+
+        if (!scopeAuthorization.canAccessInstitution(
+                authentication,
+                student.getInstitution().getId())) {
+            throw new AccessDeniedException(
+                    "You do not have access to this student's institution");
+        }
+
+        int safePageSize = Math.min(pageable.getPageSize(), 100);
+
+        Pageable safePageable = PageRequest.of(
+                pageable.getPageNumber(),
+                safePageSize,
+                pageable.getSort()
+        );
+
+        String searchTerm = search == null || search.isBlank()
+                ? ""
+                : search.trim();
+
+        return userAccountRepository
+                .searchEligibleAccounts(searchTerm, safePageable)
+                .map(this::toResponse);
     }
 
     private UserResponse toResponse(UserAccount user) {

@@ -8,6 +8,7 @@ import com.school.dolphin.organization.entity.Campus;
 import com.school.dolphin.organization.entity.Institution;
 import com.school.dolphin.organization.repository.CampusRepository;
 import com.school.dolphin.organization.repository.InstitutionRepository;
+import com.school.dolphin.security.SecurityUtils;
 import com.school.dolphin.student.dto.CreateStudentRequest;
 import com.school.dolphin.student.dto.StudentResponse;
 import com.school.dolphin.student.dto.UpdateStudentRequest;
@@ -129,16 +130,16 @@ public class StudentService {
             UUID studentId,
             Authentication authentication
     ) {
-        Student student = studentRepository
-                .findByIdAndActiveTrue(studentId)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Student not found"
-                        ));
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Student not found"
+                ));
 
         boolean allowed;
 
-        if (student.getCampus() != null) {
+        if (SecurityUtils.isPlatformAdmin(authentication)) {
+            allowed = true;
+        } else if (student.getCampus() != null) {
             allowed = organizationScopeAuthorization.canAccessCampus(
                     authentication,
                     student.getCampus().getId()
@@ -195,13 +196,13 @@ public class StudentService {
                 );
             }
 
-            if (!organizationScopeAuthorization.canAccessCampus(authentication, campusId)) {
+            if (!SecurityUtils.isPlatformAdmin(authentication) && !organizationScopeAuthorization.canAccessCampus(authentication, campusId)) {
                 throw new org.springframework.security.access.AccessDeniedException(
                         "You do not have access to this campus"
                 );
             }
         } else {
-            if (!organizationScopeAuthorization.canAccessInstitution(
+            if (!SecurityUtils.isPlatformAdmin(authentication) && !organizationScopeAuthorization.canAccessInstitution(
                     authentication, institutionId)) {
                 throw new org.springframework.security.access.AccessDeniedException(
                         "You do not have access to this institution"
@@ -218,10 +219,7 @@ public class StudentService {
                 pageable.getSort()
         );
 
-        String searchTerm =
-                search == null || search.isBlank()
-                        ? null
-                        : search.trim();
+        String searchTerm = search == null || search.isBlank() ? "" : search.trim();
 
         return studentRepository.searchActiveStudents(
                         institutionId,
@@ -294,13 +292,108 @@ public class StudentService {
         return toResponse(student);
     }
 
+
+    @Transactional(readOnly = true)
+    public Page<StudentResponse> searchInactiveStudents(
+            UUID institutionId,
+            UUID campusId,
+            String search,
+            Pageable pageable,
+            Authentication authentication
+    ) {
+        Institution institution = institutionRepository.findById(institutionId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Institution not found"));
+
+        if (!institution.isActive()) {
+            throw new BusinessRuleViolationException(
+                    "Cannot search students in an inactive institution"
+            );
+        }
+
+        if (campusId != null) {
+            Campus campus = campusRepository.findById(campusId)
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException("Campus not found"));
+
+            if (!campus.getInstitution().getId().equals(institutionId)) {
+                throw new BusinessRuleViolationException(
+                        "Campus does not belong to the selected institution"
+                );
+            }
+
+            if (!campus.isActive()) {
+                throw new BusinessRuleViolationException(
+                        "Cannot search students in an inactive campus"
+                );
+            }
+
+            if (!SecurityUtils.isPlatformAdmin(authentication)
+                    && !organizationScopeAuthorization.canAccessCampus(
+                    authentication, campusId)) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "You do not have access to this campus"
+                );
+            }
+        } else {
+            if (!SecurityUtils.isPlatformAdmin(authentication)
+                    && !organizationScopeAuthorization.canAccessInstitution(
+                    authentication, institutionId)) {
+                throw new org.springframework.security.access.AccessDeniedException(
+                        "You do not have access to this institution"
+                );
+            }
+        }
+
+        int safePageSize = Math.min(pageable.getPageSize(), 100);
+
+        Pageable safePageable = PageRequest.of(
+                pageable.getPageNumber(),
+                safePageSize,
+                pageable.getSort()
+        );
+
+        String searchTerm =
+                search == null || search.isBlank() ? "" : search.trim();
+
+        return studentRepository.searchInactiveStudents(
+                        institutionId,
+                        campusId,
+                        searchTerm,
+                        safePageable
+                )
+                .map(this::toResponse);
+    }
+
+    @Transactional
+    public StudentResponse activateStudent(
+            UUID studentId,
+            Authentication authentication
+    ) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Student not found"));
+
+        checkStudentAccess(student, authentication);
+
+        if (!student.isActive()) {
+            student.setActive(true);
+            studentRepository.save(student);
+        }
+
+        return toResponse(student);
+    }
+
+
     private void checkStudentAccess(
             Student student,
             Authentication authentication
     ) {
         boolean allowed;
 
-        if (student.getCampus() != null) {
+        if (SecurityUtils.isPlatformAdmin(authentication)) {
+            allowed = true;
+        } else if (student.getCampus() != null) {
             allowed = organizationScopeAuthorization.canAccessCampus(
                     authentication,
                     student.getCampus().getId()

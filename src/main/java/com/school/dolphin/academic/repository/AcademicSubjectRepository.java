@@ -17,4 +17,16 @@ public interface AcademicSubjectRepository
 
     List<AcademicSubject> findByInstitution_IdAndActiveTrueOrderByNameAsc(
             UUID institutionId);
+
+    boolean existsByInstitution_IdAndCodeIgnoreCaseAndIdNot(
+            java.util.UUID institutionId,
+            String code,
+            java.util.UUID subjectId
+    );
+
+    boolean existsByInstitution_IdAndNameIgnoreCaseAndIdNot(
+            java.util.UUID institutionId,
+            String name,
+            java.util.UUID subjectId
+    );
 }

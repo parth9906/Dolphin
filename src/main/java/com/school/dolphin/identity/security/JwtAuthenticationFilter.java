@@ -1,3 +1,4 @@
+
 package com.school.dolphin.identity.security;
 
 import com.school.dolphin.identity.service.JwtService;
@@ -7,6 +8,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -21,14 +24,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Authenticates a request purely from the signed access token. The token is
- * verified locally (signature, expiration, issuer, audience) and the principal
- * plus authorities are built from its claims; this filter performs no database
- * access.
- */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
@@ -50,18 +50,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String authorizationHeader =
                 request.getHeader(AUTHORIZATION_HEADER);
 
-        // Missing or non-bearer credentials leave the request unauthenticated;
-        // public endpoints still succeed and protected ones get 401 later.
         if (authorizationHeader == null
                 || !authorizationHeader.startsWith(BEARER_PREFIX)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = authorizationHeader.substring(BEARER_PREFIX.length());
+        String token =
+                authorizationHeader.substring(BEARER_PREFIX.length());
 
         try {
-            AccessTokenClaims claims = jwtService.parseAccessToken(token);
+            AccessTokenClaims claims =
+                    jwtService.parseAccessToken(token);
 
             if (SecurityContextHolder.getContext()
                     .getAuthentication() == null) {
@@ -88,27 +88,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
         } catch (JwtException | IllegalArgumentException exception) {
-            // Invalid, expired, or malformed tokens remain unauthenticated.
+            log.warn(
+                    "JWT validation failed for {} {}: {} - {}",
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    exception.getClass().getSimpleName(),
+                    exception.getMessage()
+            );
+
             SecurityContextHolder.clearContext();
         }
 
         filterChain.doFilter(request, response);
     }
 
-    private List<GrantedAuthority> toAuthorities(AccessTokenClaims claims) {
-
+    private List<GrantedAuthority> toAuthorities(
+            AccessTokenClaims claims
+    ) {
         Set<GrantedAuthority> authorities = new LinkedHashSet<>();
 
         for (String roleCode : claims.roleCodes()) {
-            // Example: ROLE_TEACHER
             authorities.add(
                     new SimpleGrantedAuthority(ROLE_PREFIX + roleCode)
             );
         }
 
         for (String permissionCode : claims.permissionCodes()) {
-            // Example: STUDENT_READ
-            authorities.add(new SimpleGrantedAuthority(permissionCode));
+            authorities.add(
+                    new SimpleGrantedAuthority(permissionCode)
+            );
         }
 
         return new ArrayList<>(authorities);

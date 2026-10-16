@@ -1,9 +1,9 @@
 package com.school.dolphin.student.repository;
 
 import com.school.dolphin.student.entity.Student;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -23,13 +23,11 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
 
     Optional<Student> findByIdAndActiveTrue(UUID id);
 
-
     boolean existsByInstitution_IdAndAdmissionNumberAndIdNot(
             UUID institutionId,
             String admissionNumber,
             UUID studentId
     );
-
 
     List<Student> findByIdInAndInstitution_IdAndActiveTrue(
             Collection<UUID> studentIds,
@@ -37,26 +35,25 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
     );
 
     @Query(
-            value = """
-        SELECT s
-        FROM Student s
-        WHERE s.institution.id = :institutionId
-          AND s.active = true
-          AND (
-              :campusId IS NULL
-              OR s.campus.id = :campusId
-          )
-          AND (
-              :search IS NULL
-              OR LOWER(s.admissionNumber)
-                    LIKE LOWER(CONCAT('%', :search, '%'))
-              OR LOWER(s.firstName)
-                    LIKE LOWER(CONCAT('%', :search, '%'))
-              OR LOWER(COALESCE(s.lastName, ''))
-                    LIKE LOWER(CONCAT('%', :search, '%'))
-          )
-        """,
-            countQuery = """
+        value = """
+            SELECT s
+            FROM Student s
+            WHERE s.institution.id = :institutionId
+              AND s.active = true
+              AND (
+                  :campusId IS NULL
+                  OR s.campus.id = :campusId
+              )
+              AND (
+                  LOWER(s.admissionNumber)
+                      LIKE LOWER(CONCAT('%', :search, '%'))
+                  OR LOWER(s.firstName)
+                      LIKE LOWER(CONCAT('%', :search, '%'))
+                  OR LOWER(COALESCE(s.lastName, ''))
+                      LIKE LOWER(CONCAT('%', :search, '%'))
+              )
+            """,
+        countQuery = """
         SELECT COUNT(s)
         FROM Student s
         WHERE s.institution.id = :institutionId
@@ -66,17 +63,61 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
               OR s.campus.id = :campusId
           )
           AND (
-              :search IS NULL
-              OR LOWER(s.admissionNumber)
-                    LIKE LOWER(CONCAT('%', :search, '%'))
+              LOWER(s.admissionNumber)
+                  LIKE LOWER(CONCAT('%', :search, '%'))
               OR LOWER(s.firstName)
-                    LIKE LOWER(CONCAT('%', :search, '%'))
+                  LIKE LOWER(CONCAT('%', :search, '%'))
               OR LOWER(COALESCE(s.lastName, ''))
-                    LIKE LOWER(CONCAT('%', :search, '%'))
+                  LIKE LOWER(CONCAT('%', :search, '%'))
           )
         """
     )
     Page<Student> searchActiveStudents(
+            @Param("institutionId") UUID institutionId,
+            @Param("campusId") UUID campusId,
+            @Param("search") String search,
+            Pageable pageable
+    );
+
+    @Query(
+            value = """
+                    SELECT s
+                    FROM Student s
+                    WHERE s.institution.id = :institutionId
+                      AND s.active = false
+                      AND (
+                          :campusId IS NULL
+                          OR s.campus.id = :campusId
+                      )
+                      AND (
+                          LOWER(s.admissionNumber)
+                              LIKE LOWER(CONCAT('%', :search, '%'))
+                          OR LOWER(s.firstName)
+                              LIKE LOWER(CONCAT('%', :search, '%'))
+                          OR LOWER(COALESCE(s.lastName, ''))
+                              LIKE LOWER(CONCAT('%', :search, '%'))
+                      )
+                    """,
+            countQuery = """
+                    SELECT COUNT(s)
+                    FROM Student s
+                    WHERE s.institution.id = :institutionId
+                      AND s.active = false
+                      AND (
+                          :campusId IS NULL
+                          OR s.campus.id = :campusId
+                      )
+                      AND (
+                          LOWER(s.admissionNumber)
+                              LIKE LOWER(CONCAT('%', :search, '%'))
+                          OR LOWER(s.firstName)
+                              LIKE LOWER(CONCAT('%', :search, '%'))
+                          OR LOWER(COALESCE(s.lastName, ''))
+                              LIKE LOWER(CONCAT('%', :search, '%'))
+                      )
+                    """
+    )
+    Page<Student> searchInactiveStudents(
             @Param("institutionId") UUID institutionId,
             @Param("campusId") UUID campusId,
             @Param("search") String search,

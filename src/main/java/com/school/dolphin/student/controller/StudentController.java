@@ -1,22 +1,18 @@
+
 package com.school.dolphin.student.controller;
 
-import com.school.dolphin.student.dto.CreateStudentRequest;
-import com.school.dolphin.student.dto.StudentResponse;
-import com.school.dolphin.student.dto.UpdateStudentRequest;
-import com.school.dolphin.student.dto.LinkStudentAccountRequest;
-import com.school.dolphin.student.dto.StudentAccountLinkResponse;
+import com.school.dolphin.student.dto.*;
 import com.school.dolphin.student.service.StudentAccountLinkService;
 import com.school.dolphin.student.service.StudentService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
-import org.springframework.data.domain.Sort;
-import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.UUID;
 
@@ -76,6 +72,27 @@ public class StudentController {
         );
     }
 
+    @GetMapping("/inactive")
+    @PreAuthorize("hasAuthority('STUDENT_READ')")
+    public Page<StudentResponse> searchInactiveStudents(
+            @RequestParam UUID institutionId,
+            @RequestParam(required = false) UUID campusId,
+            @RequestParam(required = false) String search,
+            @PageableDefault(
+                    size = 20,
+                    sort = "firstName",
+                    direction = Sort.Direction.ASC
+            ) Pageable pageable,
+            Authentication authentication
+    ) {
+        return studentService.searchInactiveStudents(
+                institutionId,
+                campusId,
+                search,
+                pageable,
+                authentication
+        );
+    }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAuthority('STUDENT_UPDATE')")
@@ -96,6 +113,15 @@ public class StudentController {
         return studentService.deactivateStudent(id, authentication);
     }
 
+    @PatchMapping("/{id}/activate")
+    @PreAuthorize("hasAuthority('STUDENT_ACTIVATE')")
+    public StudentResponse activateStudent(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        return studentService.activateStudent(id, authentication);
+    }
+
     @PostMapping("/{id}/account-link")
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('STUDENT_ACCOUNT_LINK')")
@@ -106,4 +132,15 @@ public class StudentController {
     ) {
         return studentAccountLinkService.link(id, request, authentication);
     }
+
+
+    @GetMapping("/{id}/account-link")
+    @PreAuthorize("hasAuthority('STUDENT_READ')")
+    public StudentAccountLinkDetailsResponse getAccountLink(
+            @PathVariable UUID id,
+            Authentication authentication
+    ) {
+        return studentAccountLinkService.getLink(id, authentication);
+    }
+
 }

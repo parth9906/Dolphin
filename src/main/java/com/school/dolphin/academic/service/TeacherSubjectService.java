@@ -1,10 +1,7 @@
 
 package com.school.dolphin.academic.service;
 
-import com.school.dolphin.academic.dto.AcademicSubjectResponse;
-import com.school.dolphin.academic.dto.AssignTeacherSubjectRequest;
-import com.school.dolphin.academic.dto.CreateAcademicSubjectRequest;
-import com.school.dolphin.academic.dto.TeacherSubjectAssignmentResponse;
+import com.school.dolphin.academic.dto.*;
 import com.school.dolphin.academic.entity.AcademicSubject;
 import com.school.dolphin.academic.entity.TeacherSubjectAssignment;
 import com.school.dolphin.academic.repository.AcademicSubjectRepository;
@@ -27,25 +24,26 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
 public class TeacherSubjectService {
 
-    private final AcademicSubjectRepository subjectRepository;
+    private final AcademicSubjectRepository academicSubjectRepository;
     private final TeacherSubjectAssignmentRepository assignmentRepository;
     private final StaffAssignmentRepository staffAssignmentRepository;
     private final InstitutionRepository institutionRepository;
     private final OrganizationScopeAuthorization scopeAuthorization;
 
     public TeacherSubjectService(
-            AcademicSubjectRepository subjectRepository,
+            AcademicSubjectRepository academicSubjectRepository,
             TeacherSubjectAssignmentRepository assignmentRepository,
             StaffAssignmentRepository staffAssignmentRepository,
             InstitutionRepository institutionRepository,
             OrganizationScopeAuthorization scopeAuthorization
     ) {
-        this.subjectRepository = subjectRepository;
+        this.academicSubjectRepository = academicSubjectRepository;
         this.assignmentRepository = assignmentRepository;
         this.staffAssignmentRepository = staffAssignmentRepository;
         this.institutionRepository = institutionRepository;
@@ -72,13 +70,13 @@ public class TeacherSubjectService {
         String code = request.code().trim().toUpperCase();
         String name = request.name().trim();
 
-        if (subjectRepository.existsByInstitution_IdAndCodeIgnoreCase(
+        if (academicSubjectRepository.existsByInstitution_IdAndCodeIgnoreCase(
                 institution.getId(), code)) {
             throw new DuplicateResourceException(
                     "Subject code already exists in this institution");
         }
 
-        if (subjectRepository.existsByInstitution_IdAndNameIgnoreCase(
+        if (academicSubjectRepository.existsByInstitution_IdAndNameIgnoreCase(
                 institution.getId(), name)) {
             throw new DuplicateResourceException(
                     "Subject name already exists in this institution");
@@ -91,7 +89,7 @@ public class TeacherSubjectService {
         subject.setDescription(normalize(request.description()));
         subject.setActive(true);
 
-        return toSubjectResponse(subjectRepository.save(subject));
+        return toSubjectResponse(academicSubjectRepository.save(subject));
     }
 
     @Transactional(readOnly = true)
@@ -101,7 +99,7 @@ public class TeacherSubjectService {
     ) {
         requireInstitutionAccess(authentication, institutionId);
 
-        return subjectRepository
+        return academicSubjectRepository
                 .findByInstitution_IdAndActiveTrueOrderByNameAsc(institutionId)
                 .stream()
                 .map(this::toSubjectResponse)
@@ -141,7 +139,7 @@ public class TeacherSubjectService {
                     "Only staff with type TEACHER can receive subject assignments");
         }
 
-        AcademicSubject subject = subjectRepository
+        AcademicSubject subject = academicSubjectRepository
                 .findById(request.subjectId())
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Subject not found"));
@@ -218,6 +216,54 @@ public class TeacherSubjectService {
         assignment.setActive(false);
 
         return toAssignmentResponse(assignmentRepository.save(assignment));
+    }
+
+    @Transactional
+    public AcademicSubjectResponse updateSubject(
+            UUID subjectId,
+            UpdateAcademicSubjectRequest request,
+            Authentication authentication
+    ) {
+        AcademicSubject subject = academicSubjectRepository.findById(subjectId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Subject not found: " + subjectId
+                ));
+
+        UUID institutionId = subject.getInstitution().getId();
+        requireInstitutionAccess(authentication, institutionId);
+
+        if (!subject.isActive()) {
+            throw new IllegalArgumentException("Cannot update an inactive subject");
+        }
+
+        String code = request.code().trim().toUpperCase(Locale.ROOT);
+        String name = request.name().trim();
+        String description = request.description() == null
+                || request.description().isBlank()
+                ? null
+                : request.description().trim();
+
+        if (academicSubjectRepository
+                .existsByInstitution_IdAndCodeIgnoreCaseAndIdNot(
+                        institutionId, code, subjectId)) {
+            throw new IllegalArgumentException(
+                    "A subject with this code already exists"
+            );
+        }
+
+        if (academicSubjectRepository
+                .existsByInstitution_IdAndNameIgnoreCaseAndIdNot(
+                        institutionId, name, subjectId)) {
+            throw new IllegalArgumentException(
+                    "A subject with this name already exists"
+            );
+        }
+
+        subject.setCode(code);
+        subject.setName(name);
+        subject.setDescription(description);
+
+        return toSubjectResponse(subject);
     }
 
     private void requireInstitutionAccess(

@@ -11,4 +11,10 @@ public interface SchoolClassRepository
 
     List<SchoolClass> findByAcademicYear_IdAndActiveTrueOrderBySortOrderAsc(
             UUID academicYearId);
+
+    boolean existsByAcademicYear_IdAndNameIgnoreCaseAndIdNot(
+            UUID academicYearId, String name, UUID id);
+
+    boolean existsByAcademicYear_IdAndCodeIgnoreCaseAndIdNot(
+            UUID academicYearId, String code, UUID id);
 }

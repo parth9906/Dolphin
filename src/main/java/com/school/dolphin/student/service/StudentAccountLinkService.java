@@ -17,6 +17,7 @@ import com.school.dolphin.identity.repository.UserRoleRepository;
 import com.school.dolphin.identity.security.OrganizationScopeAuthorization;
 import com.school.dolphin.staff.repository.StaffMemberRepository;
 import com.school.dolphin.student.dto.LinkStudentAccountRequest;
+import com.school.dolphin.student.dto.StudentAccountLinkDetailsResponse;
 import com.school.dolphin.student.dto.StudentAccountLinkResponse;
 import com.school.dolphin.student.entity.Student;
 import com.school.dolphin.student.entity.StudentAccountLink;
@@ -107,6 +108,45 @@ public class StudentAccountLinkService {
 
         return StudentAccountLinkResponse.from(saved);
     }
+
+
+
+    @Transactional(readOnly = true)
+    public StudentAccountLinkDetailsResponse getLink(
+            UUID studentId,
+            Authentication authentication
+    ) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Student not found"));
+
+        // Enforce organization-scope authorization.
+        boolean allowed;
+
+        if (student.getCampus() != null) {
+            allowed = scopeAuthorization.canAccessCampus(
+                    authentication,
+                    student.getCampus().getId()
+            );
+        } else {
+            allowed = scopeAuthorization.canAccessInstitution(
+                    authentication,
+                    student.getInstitution().getId()
+            );
+        }
+
+        if (!allowed) {
+            throw new AccessDeniedException(
+                    "You do not have access to this student's organization"
+            );
+        }
+
+        return studentAccountLinkRepository.findByStudent_Id(studentId)
+                .map(StudentAccountLinkDetailsResponse::from)
+                .orElseGet(() ->
+                        StudentAccountLinkDetailsResponse.notLinked(studentId));
+    }
+
 
     private void assignRole(UserAccount userAccount, Role role) {
         if (userRoleRepository.existsByUserIdAndRoleId(

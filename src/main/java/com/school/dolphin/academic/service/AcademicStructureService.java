@@ -1,6 +1,8 @@
 
 package com.school.dolphin.academic.service;
 
+import com.school.dolphin.academic.dto.UpdateSchoolClassRequest;
+
 import com.school.dolphin.academic.dto.*;
 import com.school.dolphin.academic.entity.*;
 import com.school.dolphin.academic.repository.*;
@@ -121,6 +123,54 @@ public class AcademicStructureService {
         schoolClass.setCode(request.code().trim().toUpperCase());
         schoolClass.setSortOrder(request.sortOrder());
         schoolClass.setActive(true);
+
+        return schoolClassRepository.save(schoolClass).getId();
+    }
+
+    @Transactional
+    public UUID updateClass(
+            UUID schoolClassId,
+            UpdateSchoolClassRequest request,
+            Authentication authentication
+    ) {
+        SchoolClass schoolClass = schoolClassRepository.findById(schoolClassId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Class not found"));
+
+        AcademicYear year = schoolClass.getAcademicYear();
+        requireInstitutionAccess(
+                authentication, year.getInstitution().getId());
+
+        if (!schoolClass.isActive()) {
+            throw new BusinessRuleViolationException(
+                    "Cannot update an inactive class");
+        }
+
+        if (year.getStatus() == AcademicYearStatus.CLOSED) {
+            throw new BusinessRuleViolationException(
+                    "Cannot update classes in a closed academic year");
+        }
+
+        String name = request.name().trim();
+        String code = request.code().trim().toUpperCase();
+
+        if (schoolClassRepository
+                .existsByAcademicYear_IdAndNameIgnoreCaseAndIdNot(
+                        year.getId(), name, schoolClassId)) {
+            throw new BusinessRuleViolationException(
+                    "A class with this name already exists in the academic year");
+        }
+
+        if (schoolClassRepository
+                .existsByAcademicYear_IdAndCodeIgnoreCaseAndIdNot(
+                        year.getId(), code, schoolClassId)) {
+            throw new BusinessRuleViolationException(
+                    "A class with this code already exists in the academic year");
+        }
+
+        schoolClass.setName(name);
+        schoolClass.setCode(code);
+        schoolClass.setSortOrder(request.sortOrder());
 
         return schoolClassRepository.save(schoolClass).getId();
     }

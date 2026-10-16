@@ -1,10 +1,7 @@
 
 package com.school.dolphin.academic.controller;
 
-import com.school.dolphin.academic.dto.AcademicSubjectResponse;
-import com.school.dolphin.academic.dto.AssignTeacherSubjectRequest;
-import com.school.dolphin.academic.dto.CreateAcademicSubjectRequest;
-import com.school.dolphin.academic.dto.TeacherSubjectAssignmentResponse;
+import com.school.dolphin.academic.dto.*;
 import com.school.dolphin.academic.service.TeacherSubjectService;
 
 import jakarta.validation.Valid;
@@ -80,5 +77,17 @@ public class TeacherSubjectController {
     ) {
         return teacherSubjectService.endAssignment(
                 assignmentId, endDate, authentication);
+    }
+
+    @PutMapping("/subjects/{subjectId}")
+    @PreAuthorize("hasAuthority('SUBJECT_UPDATE')")
+    public AcademicSubjectResponse updateSubject(
+            @PathVariable UUID subjectId,
+            @Valid @RequestBody UpdateAcademicSubjectRequest request,
+            Authentication authentication
+    ) {
+        return teacherSubjectService.updateSubject(
+                subjectId, request, authentication
+        );
     }
 }

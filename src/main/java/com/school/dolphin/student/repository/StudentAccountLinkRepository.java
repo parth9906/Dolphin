@@ -1,3 +1,4 @@
+
 package com.school.dolphin.student.repository;
 
 import com.school.dolphin.student.entity.StudentAccountLink;
@@ -9,7 +10,13 @@ import java.util.UUID;
 public interface StudentAccountLinkRepository
         extends JpaRepository<StudentAccountLink, UUID> {
 
-    Optional<StudentAccountLink> findByUserAccount_Id(UUID userAccountId);
+    Optional<StudentAccountLink> findByUserAccount_Id(
+            UUID userAccountId
+    );
+
+    Optional<StudentAccountLink> findByStudent_Id(
+            UUID studentId
+    );
 
     boolean existsByStudent_Id(UUID studentId);
 
