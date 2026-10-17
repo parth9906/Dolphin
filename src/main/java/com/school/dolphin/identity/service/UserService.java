@@ -25,11 +25,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import com.school.dolphin.identity.entity.Role;
+import com.school.dolphin.identity.repository.RoleRepository;
+import com.school.dolphin.identity.repository.UserRoleRepository;
 
 @Service
 @RequiredArgsConstructor
 public class UserService {
 
+    private static final String PLATFORM_ADMIN = "PLATFORM_ADMIN";
+
+    private final RoleRepository roleRepository;
+    private final UserRoleRepository userRoleRepository;
     private final UserAccountRepository userAccountRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticatedUserResolver authenticatedUserResolver;
@@ -111,19 +118,38 @@ public class UserService {
 
     @Transactional
     public UserResponse deactivate(UUID userId) {
+        // Keep the admin role locked while checking and changing the
+        // active-account invariant.
+        Role platformAdminRole = roleRepository
+                .findByCodeForUpdate(PLATFORM_ADMIN)
+                .orElse(null);
+
         UserAccount user = userAccountRepository.findById(userId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
-                                "User not found: " + userId
-                        ));
+                                "User not found: " + userId));
 
         if (user.isActive()) {
+            boolean isPlatformAdmin = platformAdminRole != null
+                    && userRoleRepository.existsByUserIdAndRoleId(
+                    userId, platformAdminRole.getId());
+
+            if (isPlatformAdmin) {
+                long activePlatformAdmins = userRoleRepository
+                        .countByRole_IdAndUser_ActiveTrue(
+                                platformAdminRole.getId());
+
+                if (activePlatformAdmins <= 1) {
+                    throw new BusinessRuleViolationException(
+                            "Cannot deactivate the last active PLATFORM_ADMIN");
+                }
+            }
+
             user.setActive(false);
             userAccountRepository.save(user);
         }
 
-        // Existing access tokens remain valid until they expire (<= 15 min),
-        // but every refresh session is revoked immediately.
+        // Preserve existing session-revocation behavior.
         refreshTokenService.revokeAllForUser(
                 user.getId(), OffsetDateTime.now());
 

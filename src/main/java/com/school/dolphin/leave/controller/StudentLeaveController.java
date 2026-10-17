@@ -1,10 +1,12 @@
 package com.school.dolphin.leave.controller;
 
 import com.school.dolphin.leave.dto.CreateStudentLeaveRequest;
+import com.school.dolphin.leave.dto.LeaveTypeResponse;
 import com.school.dolphin.leave.dto.ReviewStudentLeaveRequest;
 import com.school.dolphin.leave.dto.StudentLeaveAuditResponse;
 import com.school.dolphin.leave.dto.StudentLeaveResponse;
 import com.school.dolphin.leave.entity.LeaveRequestStatus;
+import com.school.dolphin.leave.service.LeaveTypeService;
 import com.school.dolphin.leave.service.StudentLeaveService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ import java.util.UUID;
 public class StudentLeaveController {
 
     private final StudentLeaveService studentLeaveService;
+    private final LeaveTypeService leaveTypeService;
 
     @PostMapping
     @PreAuthorize("hasAuthority('STUDENT_LEAVE_CREATE')")
@@ -34,16 +37,33 @@ public class StudentLeaveController {
         return studentLeaveService.create(request, authentication);
     }
 
+    @GetMapping("/types")
+    @PreAuthorize("hasAuthority('STUDENT_LEAVE_READ')")
+    public List<LeaveTypeResponse> getLeaveTypes(
+            @RequestParam UUID institutionId,
+            Authentication authentication
+    ) {
+        return leaveTypeService.getStudentLeaveTypes(
+                institutionId,
+                authentication
+        );
+    }
+
     @GetMapping
     @PreAuthorize("hasAuthority('STUDENT_LEAVE_READ')")
     public Page<StudentLeaveResponse> list(
             @RequestParam UUID institutionId,
             @RequestParam LeaveRequestStatus status,
-            @PageableDefault(size = 20, sort = "startDate") Pageable pageable,
+            @PageableDefault(size = 20, sort = "startDate")
+            Pageable pageable,
             Authentication authentication
     ) {
         return studentLeaveService.list(
-                institutionId, status, pageable, authentication);
+                institutionId,
+                status,
+                pageable,
+                authentication
+        );
     }
 
     @PostMapping("/{leaveId}/approve")
@@ -53,7 +73,11 @@ public class StudentLeaveController {
             @Valid @RequestBody ReviewStudentLeaveRequest request,
             Authentication authentication
     ) {
-        return studentLeaveService.approve(leaveId, request, authentication);
+        return studentLeaveService.approve(
+                leaveId,
+                request,
+                authentication
+        );
     }
 
     @PostMapping("/{leaveId}/reject")
@@ -63,7 +87,11 @@ public class StudentLeaveController {
             @Valid @RequestBody ReviewStudentLeaveRequest request,
             Authentication authentication
     ) {
-        return studentLeaveService.reject(leaveId, request, authentication);
+        return studentLeaveService.reject(
+                leaveId,
+                request,
+                authentication
+        );
     }
 
     @PostMapping("/{leaveRequestId}/cancel")
@@ -72,7 +100,10 @@ public class StudentLeaveController {
             @PathVariable UUID leaveRequestId,
             Authentication authentication
     ) {
-        return studentLeaveService.cancel(leaveRequestId, authentication);
+        return studentLeaveService.cancel(
+                leaveRequestId,
+                authentication
+        );
     }
 
     @GetMapping("/{leaveId}/audit")
@@ -81,6 +112,9 @@ public class StudentLeaveController {
             @PathVariable UUID leaveId,
             Authentication authentication
     ) {
-        return studentLeaveService.getAudit(leaveId, authentication);
+        return studentLeaveService.getAudit(
+                leaveId,
+                authentication
+        );
     }
 }

@@ -25,7 +25,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -100,12 +102,14 @@ public class AcademicStructureService {
         return academicYearRepository.save(year).getId();
     }
 
+
     @Transactional
     public UUID createClass(
             CreateSchoolClassRequest request,
             Authentication authentication
     ) {
-        AcademicYear year = academicYearRepository.findById(request.academicYearId())
+        AcademicYear year = academicYearRepository
+                .findById(request.academicYearId())
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Academic year not found"));
 
@@ -117,15 +121,33 @@ public class AcademicStructureService {
                     "Cannot add classes to a closed academic year");
         }
 
+        String name = request.name().trim();
+        String code = request.code().trim().toUpperCase();
+
+        if (schoolClassRepository
+                .existsByAcademicYear_IdAndNameIgnoreCase(
+                        year.getId(), name)) {
+            throw new DuplicateResourceException(
+                    "A class with this name already exists in the academic year");
+        }
+
+        if (schoolClassRepository
+                .existsByAcademicYear_IdAndCodeIgnoreCase(
+                        year.getId(), code)) {
+            throw new DuplicateResourceException(
+                    "A class with this code already exists in the academic year");
+        }
+
         SchoolClass schoolClass = new SchoolClass();
         schoolClass.setAcademicYear(year);
-        schoolClass.setName(request.name().trim());
-        schoolClass.setCode(request.code().trim().toUpperCase());
+        schoolClass.setName(name);
+        schoolClass.setCode(code);
         schoolClass.setSortOrder(request.sortOrder());
         schoolClass.setActive(true);
 
         return schoolClassRepository.save(schoolClass).getId();
     }
+
 
     @Transactional
     public UUID updateClass(
@@ -175,6 +197,8 @@ public class AcademicStructureService {
         return schoolClassRepository.save(schoolClass).getId();
     }
 
+
+
     @Transactional
     public UUID createSection(
             CreateClassSectionRequest request,
@@ -196,6 +220,14 @@ public class AcademicStructureService {
                     "Cannot add a section to an inactive class or closed year");
         }
 
+        String sectionName = request.name().trim();
+
+        if (sectionName.isEmpty()) {
+            throw new BusinessRuleViolationException(
+                    "Section name cannot be blank");
+        }
+
+        // Resolve and validate the campus before checking duplicate names.
         Campus campus = null;
 
         if (request.campusId() != null) {
@@ -206,19 +238,150 @@ public class AcademicStructureService {
             if (!campus.isActive()
                     || !campus.getInstitution().getId().equals(institutionId)) {
                 throw new BusinessRuleViolationException(
-                        "Campus must belong to the class's institution");
+                        "Campus must belong to the class's institution "
+                                + "and be active");
             }
+        }
+
+        // Match the database's campus-specific uniqueness rules.
+        boolean duplicateName;
+
+        if (campus == null) {
+            duplicateName = classSectionRepository
+                    .existsBySchoolClass_IdAndCampusIsNullAndNameIgnoreCase(
+                            schoolClass.getId(),
+                            sectionName
+                    );
+        } else {
+            duplicateName = classSectionRepository
+                    .existsBySchoolClass_IdAndCampus_IdAndNameIgnoreCase(
+                            schoolClass.getId(),
+                            campus.getId(),
+                            sectionName
+                    );
+        }
+
+        if (duplicateName) {
+            throw new DuplicateResourceException(
+                    "A section with this name already exists in the same campus");
+        }
+
+        if (request.capacity() != null && request.capacity() <= 0) {
+            throw new BusinessRuleViolationException(
+                    "Section capacity must be greater than zero");
         }
 
         ClassSection section = new ClassSection();
         section.setSchoolClass(schoolClass);
         section.setCampus(campus);
-        section.setName(request.name().trim());
+        section.setName(sectionName);
         section.setCapacity(request.capacity());
         section.setActive(true);
 
         return classSectionRepository.save(section).getId();
     }
+
+    @Transactional
+    public UUID updateSection(
+            UUID sectionId,
+            UpdateClassSectionRequest request,
+            Authentication authentication
+    ) {
+        ClassSection section = classSectionRepository.findById(sectionId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Section not found"));
+
+        SchoolClass schoolClass = section.getSchoolClass();
+        AcademicYear year = schoolClass.getAcademicYear();
+        UUID institutionId = year.getInstitution().getId();
+
+        requireInstitutionAccess(authentication, institutionId);
+
+        if (!section.isActive()) {
+            throw new BusinessRuleViolationException(
+                    "Cannot update an inactive section");
+        }
+
+        if (!schoolClass.isActive()
+                || year.getStatus() == AcademicYearStatus.CLOSED) {
+            throw new BusinessRuleViolationException(
+                    "Cannot update a section in an inactive class "
+                            + "or closed academic year");
+        }
+
+        String sectionName = request.name().trim();
+
+        if (sectionName.isEmpty()) {
+            throw new BusinessRuleViolationException(
+                    "Section name cannot be blank");
+        }
+
+        // Resolve and validate the requested campus first.
+        Campus campus = null;
+
+        if (request.campusId() != null) {
+            campus = campusRepository.findById(request.campusId())
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException("Campus not found"));
+
+            if (!campus.isActive()
+                    || !campus.getInstitution().getId().equals(institutionId)) {
+                throw new BusinessRuleViolationException(
+                        "Campus must belong to the section's institution "
+                                + "and be active");
+            }
+        }
+
+        // Check duplicate names according to the campus-specific uniqueness rule.
+        boolean duplicateName;
+
+        if (campus == null) {
+            duplicateName = classSectionRepository
+                    .existsBySchoolClass_IdAndCampusIsNullAndNameIgnoreCaseAndIdNot(
+                            schoolClass.getId(),
+                            sectionName,
+                            sectionId
+                    );
+        } else {
+            duplicateName = classSectionRepository
+                    .existsBySchoolClass_IdAndCampus_IdAndNameIgnoreCaseAndIdNot(
+                            schoolClass.getId(),
+                            campus.getId(),
+                            sectionName,
+                            sectionId
+                    );
+        }
+
+        if (duplicateName) {
+            throw new DuplicateResourceException(
+                    "A section with this name already exists in the same campus");
+        }
+
+        Integer newCapacity = request.capacity();
+
+        if (newCapacity != null && newCapacity <= 0) {
+            throw new BusinessRuleViolationException(
+                    "Section capacity must be greater than zero");
+        }
+
+        long activeEnrollmentCount =
+                studentEnrollmentRepository.countBySection_IdAndStatus(
+                        sectionId, EnrollmentStatus.ACTIVE);
+
+        if (newCapacity != null
+                && newCapacity < activeEnrollmentCount) {
+            throw new BusinessRuleViolationException(
+                    "Section capacity cannot be lower than its active "
+                            + "enrollment count");
+        }
+
+        section.setName(sectionName);
+        section.setCampus(campus);
+        section.setCapacity(newCapacity);
+
+        return classSectionRepository.save(section).getId();
+    }
+
 
     @Transactional
     public UUID enrollStudent(
@@ -252,7 +415,8 @@ public class AcademicStructureService {
                     "Student and section must belong to the same institution");
         }
 
-        if (request.startDate().isBefore(year.getStartDate())
+        if (request.startDate() == null
+                || request.startDate().isBefore(year.getStartDate())
                 || request.startDate().isAfter(year.getEndDate())) {
             throw new BusinessRuleViolationException(
                     "Enrollment start date must fall within the academic year");
@@ -263,6 +427,9 @@ public class AcademicStructureService {
             throw new DuplicateResourceException(
                     "Student already has an active enrollment");
         }
+
+        // Reject enrollment when the section has reached its capacity.
+        validateSectionCapacity(section);
 
         StudentEnrollment enrollment = new StudentEnrollment();
         enrollment.setStudent(student);
@@ -354,16 +521,42 @@ public class AcademicStructureService {
             UUID schoolClassId,
             Authentication authentication
     ) {
-        SchoolClass schoolClass = schoolClassRepository.findById(schoolClassId)
+        SchoolClass schoolClass = schoolClassRepository
+                .findById(schoolClassId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Class not found"));
 
         AcademicYear year = schoolClass.getAcademicYear();
-        requireInstitutionAccess(authentication, year.getInstitution().getId());
 
-        return classSectionRepository
-                .findBySchoolClass_IdAndActiveTrueOrderByNameAsc(schoolClassId)
-                .stream()
+        requireInstitutionAccess(
+                authentication, year.getInstitution().getId());
+
+        List<ClassSection> sections = classSectionRepository
+                .findBySchoolClass_IdAndActiveTrueOrderByNameAsc(
+                        schoolClassId);
+
+        if (sections.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> sectionIds = sections.stream()
+                .map(ClassSection::getId)
+                .toList();
+
+        List<StudentEnrollmentRepository.SectionEnrollmentCount> counts =
+                studentEnrollmentRepository.countBySectionIdsAndStatus(
+                        sectionIds, EnrollmentStatus.ACTIVE);
+
+        Map<UUID, Long> enrollmentCountBySectionId = new HashMap<>();
+
+        for (StudentEnrollmentRepository.SectionEnrollmentCount count
+                : counts) {
+            enrollmentCountBySectionId.put(
+                    count.getSectionId(),
+                    count.getEnrollmentCount());
+        }
+
+        return sections.stream()
                 .map(section -> new ClassSectionResponse(
                         section.getId(),
                         schoolClass.getId(),
@@ -371,8 +564,8 @@ public class AcademicStructureService {
                                 ? null : section.getCampus().getId(),
                         section.getName(),
                         section.getCapacity(),
-                        studentEnrollmentRepository.countBySection_IdAndStatus(
-                                section.getId(), EnrollmentStatus.ACTIVE),
+                        enrollmentCountBySectionId.getOrDefault(
+                                section.getId(), 0L),
                         section.isActive()
                 ))
                 .toList();
@@ -441,9 +634,13 @@ public class AcademicStructureService {
             Authentication authentication
     ) {
         return endEnrollment(
-                enrollmentId, request.endDate(),
-                EnrollmentStatus.WITHDRAWN, authentication);
+                enrollmentId,
+                request.endDate(),
+                EnrollmentStatus.WITHDRAWN,
+                authentication
+        );
     }
+
 
     private UUID endEnrollment(
             UUID enrollmentId,
@@ -468,10 +665,7 @@ public class AcademicStructureService {
                     "Only active enrollments can be completed or withdrawn");
         }
 
-        if (endDate.isBefore(enrollment.getStartDate())) {
-            throw new BusinessRuleViolationException(
-                    "End date cannot be before the enrollment start date");
-        }
+        validateEnrollmentEndDate(enrollment, endDate);
 
         if (endDate.isAfter(year.getEndDate())) {
             throw new BusinessRuleViolationException(
@@ -483,6 +677,7 @@ public class AcademicStructureService {
 
         return studentEnrollmentRepository.save(enrollment).getId();
     }
+
 
 
     @Transactional
@@ -526,7 +721,8 @@ public class AcademicStructureService {
                             + "using this operation");
         }
 
-        if (!target.isActive() || !targetClass.isActive()
+        if (!target.isActive()
+                || !targetClass.isActive()
                 || targetYear.getStatus() != AcademicYearStatus.ACTIVE) {
             throw new BusinessRuleViolationException(
                     "Target section must belong to an active academic year "
@@ -534,6 +730,11 @@ public class AcademicStructureService {
         }
 
         LocalDate transferDate = request.effectiveDate();
+
+        if (transferDate == null) {
+            throw new BusinessRuleViolationException(
+                    "Transfer date is required");
+        }
 
         if (transferDate.isBefore(current.getStartDate())
                 || transferDate.isAfter(currentYear.getEndDate())
@@ -549,13 +750,22 @@ public class AcademicStructureService {
                     "Student is already enrolled in this section");
         }
 
+        LocalDate previousEnrollmentEndDate = transferDate.minusDays(1);
+
+        if (previousEnrollmentEndDate.isBefore(current.getStartDate())) {
+            throw new BusinessRuleViolationException(
+                    "Transfer date must be after the current enrollment start date");
+        }
+
         validateSectionCapacity(target);
 
-        // End the old enrollment before inserting the new one.
-        current.setEndDate(transferDate);
+        // End the old enrollment one day before the transfer date.
+        current.setEndDate(previousEnrollmentEndDate);
         current.setStatus(EnrollmentStatus.COMPLETED);
+
         studentEnrollmentRepository.saveAndFlush(current);
 
+        // Start the new enrollment on the transfer date.
         StudentEnrollment next = new StudentEnrollment();
         next.setStudent(current.getStudent());
         next.setSection(target);
@@ -652,4 +862,21 @@ public class AcademicStructureService {
                     "You do not have access to this institution");
         }
     }
+
+
+    private void validateEnrollmentEndDate(
+            StudentEnrollment enrollment,
+            LocalDate endDate
+    ) {
+        if (endDate == null) {
+            throw new BusinessRuleViolationException(
+                    "Enrollment end date is required");
+        }
+
+        if (endDate.isBefore(enrollment.getStartDate())) {
+            throw new BusinessRuleViolationException(
+                    "Enrollment end date cannot be before its start date");
+        }
+    }
+
 }

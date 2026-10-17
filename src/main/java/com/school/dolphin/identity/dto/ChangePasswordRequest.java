@@ -1,5 +1,6 @@
 package com.school.dolphin.identity.dto;
 
+import com.school.dolphin.identity.validation.BcryptPassword;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -9,7 +10,7 @@ public record ChangePasswordRequest(
         String currentPassword,
 
         @NotBlank(message = "New password is required")
-        @Size(min = 8, max = 100,
-                message = "New password must be between 8 and 100 characters")
+        @Size(min = 8, max = 100, message = "New password must be between 8 and 100 characters")
+        @BcryptPassword
         String newPassword
 ) {}

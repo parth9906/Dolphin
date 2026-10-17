@@ -27,6 +27,9 @@ public class SchoolClass {
     @JoinColumn(name = "academic_year_id", nullable = false)
     private AcademicYear academicYear;
 
+    @Column(name = "institution_id", nullable = false, insertable = false, updatable = false)
+    private UUID institutionId;
+
     @Column(nullable = false, length = 80)
     private String name;
 

@@ -11,4 +11,6 @@ public interface StaffMemberRepository
     Optional<StaffMember> findByUserAccount_Id(UUID userAccountId);
 
     boolean existsByUserAccount_Id(UUID userAccountId);
+
+    Optional<StaffMember> findByIdAndUserAccountIsNull(UUID id);
 }

@@ -1,3 +1,4 @@
+
 package com.school.dolphin.identity.repository;
 
 import com.school.dolphin.identity.entity.UserRole;
@@ -14,6 +15,10 @@ public interface UserRoleRepository
 
     boolean existsByUserIdAndRoleId(UUID userId, UUID roleId);
 
+    List<UserRole> findByUser_Id(UUID userId);
+
+    long countByRole_IdAndUser_ActiveTrue(UUID roleId);
+
     @Query("""
         SELECT DISTINCT r.code
         FROM UserRole ur
@@ -21,7 +26,7 @@ public interface UserRoleRepository
         WHERE ur.user.id = :userId
           AND r.active = true
         ORDER BY r.code
-    """)
+        """)
     List<String> findActiveRoleCodesByUserId(
             @Param("userId") UUID userId
     );

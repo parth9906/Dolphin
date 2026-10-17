@@ -1,6 +1,21 @@
 spring:
   application:
     name: dolphin
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SMTP_AUTH:false}
+          starttls:
+            enable: ${SMTP_STARTTLS:false}
+
+  school:
+    time-zone: ${SCHOOL_TIME_ZONE:Asia/Kolkata}
+
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -42,3 +57,13 @@ app:
   notification:
     outbox:
       poll-delay-ms: 5000
+  invitation:
+    email:
+      enabled: ${INVITATION_EMAIL_ENABLED:false}
+      from: ${INVITATION_EMAIL_FROM:no-reply@example.invalid}
+      base-url: ${INVITATION_BASE_URL:http://localhost:3000/accept-invitation}
+      validity-hours: 24
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+
+

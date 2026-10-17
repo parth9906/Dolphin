@@ -1,3 +1,4 @@
+
 package com.school.dolphin.identity.repository;
 
 import com.school.dolphin.identity.entity.OrganizationScopeType;
@@ -5,6 +6,7 @@ import com.school.dolphin.identity.entity.UserOrganizationScope;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface UserOrganizationScopeRepository
@@ -17,4 +19,16 @@ public interface UserOrganizationScopeRepository
     );
 
     List<UserOrganizationScope> findByUser_Id(UUID userId);
+
+    Optional<UserOrganizationScope> findByUser_IdAndScopeTypeAndScopeId(
+            UUID userId,
+            OrganizationScopeType scopeType,
+            UUID scopeId
+    );
+
+    long deleteByUser_IdAndScopeTypeAndScopeId(
+            UUID userId,
+            OrganizationScopeType scopeType,
+            UUID scopeId
+    );
 }

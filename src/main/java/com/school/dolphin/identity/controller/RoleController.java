@@ -10,6 +10,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.web.bind.annotation.RequestParam;
+
 import java.util.UUID;
 
 @RestController
@@ -46,4 +52,44 @@ public class RoleController {
     ) {
         rolePermissionService.assignPermission(roleId, permissionId);
     }
+
+
+    @PreAuthorize("hasAuthority('ROLE_READ')")
+    @GetMapping
+    public Page<RoleResponse> searchRoles(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "true") boolean active,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "code") String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDirection
+    ) {
+        if (page < 0) {
+            throw new IllegalArgumentException("Page must be zero or greater");
+        }
+
+        if (size < 1 || size > 100) {
+            throw new IllegalArgumentException("Size must be between 1 and 100");
+        }
+
+        // Only permit known entity fields for sorting.
+        String safeSortBy = switch (sortBy) {
+            case "code", "name", "createdAt", "updatedAt" -> sortBy;
+            default -> "code";
+        };
+
+        Sort.Direction direction =
+                "desc".equalsIgnoreCase(sortDirection)
+                        ? Sort.Direction.DESC
+                        : Sort.Direction.ASC;
+
+        Pageable pageable = PageRequest.of(
+                page,
+                size,
+                Sort.by(direction, safeSortBy)
+        );
+
+        return roleService.search(search, active, pageable);
+    }
+
 }

@@ -1,18 +1,19 @@
 
 package com.school.dolphin.staff.controller;
 
-import com.school.dolphin.staff.dto.CreateStaffRequest;
-import com.school.dolphin.staff.dto.StaffAssignmentResponse;
-import com.school.dolphin.staff.dto.UpdateStaffAssignmentStatusRequest;
+import com.school.dolphin.staff.dto.*;
 import com.school.dolphin.staff.entity.StaffAssignmentStatus;
 import com.school.dolphin.staff.service.StaffManagementService;
 
+import com.school.dolphin.staff.service.TeacherOnboardingService;
 import jakarta.validation.Valid;
 
+import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -21,15 +22,12 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/staff")
+@AllArgsConstructor
 public class StaffController {
 
     private final StaffManagementService staffManagementService;
+    private final TeacherOnboardingService teacherOnboardingService;
 
-    public StaffController(
-            StaffManagementService staffManagementService
-    ) {
-        this.staffManagementService = staffManagementService;
-    }
 
     @PostMapping
     @PreAuthorize("hasAuthority('STAFF_CREATE')")
@@ -67,5 +65,21 @@ public class StaffController {
     ) {
         return staffManagementService.updateAssignmentStatus(
                 assignmentId, request, authentication);
+    }
+
+    @PostMapping("/onboard-teacher")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize(
+            "hasAuthority('STAFF_CREATE') and " +
+                    "hasAuthority('USER_INVITATION_CREATE')"
+    )
+    public TeacherOnboardingResponse onboardTeacher(
+            @Valid @RequestBody OnboardTeacherRequest request,
+            Authentication authentication
+    ) {
+        return teacherOnboardingService.onboardTeacher(
+                request,
+                authentication
+        );
     }
 }

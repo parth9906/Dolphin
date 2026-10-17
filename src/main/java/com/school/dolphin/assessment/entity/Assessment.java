@@ -2,6 +2,7 @@
 package com.school.dolphin.assessment.entity;
 
 import com.school.dolphin.academic.entity.ClassSection;
+import com.school.dolphin.academic.entity.SchoolClass;
 import com.school.dolphin.identity.entity.UserAccount;
 import com.school.dolphin.organization.entity.Institution;
 import jakarta.persistence.*;
@@ -27,6 +28,14 @@ public class Assessment {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "institution_id", nullable = false)
     private Institution institution;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "scope_type", nullable = false, length = 20)
+    private AssessmentScope scopeType;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "school_class_id")
+    private SchoolClass schoolClass;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "section_id")
@@ -59,9 +68,15 @@ public class Assessment {
 
     @PrePersist
     void onCreate() {
-        if (id == null) id = UUID.randomUUID();
-        if (createdAt == null) createdAt = OffsetDateTime.now();
-        if (updatedAt == null) updatedAt = createdAt;
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+        if (createdAt == null) {
+            createdAt = OffsetDateTime.now();
+        }
+        if (updatedAt == null) {
+            updatedAt = createdAt;
+        }
         active = true;
     }
 

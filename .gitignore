@@ -66,3 +66,6 @@ Desktop.ini
 *.swp
 *.swo
 *~
+
+# Local Postman environments may contain credentials
+postman/*local*.postman_environment.json

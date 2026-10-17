@@ -1,5 +1,6 @@
 package com.school.dolphin.identity.dto;
 
+import com.school.dolphin.identity.validation.BcryptPassword;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -17,6 +18,7 @@ public record CreateUserRequest(
 
         @NotBlank(message = "Password is required")
         @Size(min = 8, max = 100, message = "Password must be between 8 and 100 characters")
+        @BcryptPassword
         String password,
 
         @NotBlank(message = "First name is required")

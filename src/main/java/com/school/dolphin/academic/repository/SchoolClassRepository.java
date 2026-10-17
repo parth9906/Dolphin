@@ -17,4 +17,14 @@ public interface SchoolClassRepository
 
     boolean existsByAcademicYear_IdAndCodeIgnoreCaseAndIdNot(
             UUID academicYearId, String code, UUID id);
+
+    boolean existsByAcademicYear_IdAndNameIgnoreCase(
+            UUID academicYearId,
+            String name
+    );
+
+    boolean existsByAcademicYear_IdAndCodeIgnoreCase(
+            UUID academicYearId,
+            String code
+    );
 }

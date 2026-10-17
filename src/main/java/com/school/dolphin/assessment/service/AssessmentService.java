@@ -1,6 +1,7 @@
 
 package com.school.dolphin.assessment.service;
 
+import com.school.dolphin.academic.repository.SchoolClassRepository;
 import com.school.dolphin.assessment.dto.*;
 import com.school.dolphin.assessment.entity.Assessment;
 import com.school.dolphin.assessment.entity.StudentMark;
@@ -24,12 +25,15 @@ import com.school.dolphin.student.entity.Student;
 import com.school.dolphin.student.repository.StudentRepository;
 import com.school.dolphin.student.service.StudentSectionResolver;
 import com.school.dolphin.timetable.service.TeacherSectionAuthorization;
+import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.school.dolphin.assessment.entity.AssessmentScope;
+import com.school.dolphin.academic.entity.SchoolClass;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -43,6 +47,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@AllArgsConstructor
 public class AssessmentService {
 
     private final AssessmentRepository assessmentRepository;
@@ -55,29 +60,7 @@ public class AssessmentService {
     private final TeacherSectionAuthorization teacherSectionAuthorization;
     private final StudentSectionResolver studentSectionResolver;
     private final ClassSectionRepository classSectionRepository;
-
-    public AssessmentService(
-            AssessmentRepository assessmentRepository,
-            StudentMarkRepository studentMarkRepository,
-            StudentRepository studentRepository,
-            InstitutionRepository institutionRepository,
-            UserAccountRepository userAccountRepository,
-            OrganizationScopeAuthorization scopeAuthorization,
-            StudentMarkAuditRepository studentMarkAuditRepository,
-            TeacherSectionAuthorization teacherSectionAuthorization,
-            StudentSectionResolver studentSectionResolver,
-            ClassSectionRepository classSectionRepository) {
-        this.assessmentRepository = assessmentRepository;
-        this.studentMarkRepository = studentMarkRepository;
-        this.studentRepository = studentRepository;
-        this.institutionRepository = institutionRepository;
-        this.userAccountRepository = userAccountRepository;
-        this.scopeAuthorization = scopeAuthorization;
-        this.studentMarkAuditRepository = studentMarkAuditRepository;
-        this.teacherSectionAuthorization = teacherSectionAuthorization;
-        this.studentSectionResolver = studentSectionResolver;
-        this.classSectionRepository = classSectionRepository;
-    }
+    private final SchoolClassRepository schoolClassRepository;
 
     @Transactional
     public AssessmentResponse createAssessment(
@@ -98,8 +81,32 @@ public class AssessmentService {
 
         UserAccount creator = getAuthenticatedAccount(authentication);
 
+        validateScopeTarget(
+                request.scopeType(),
+                request.schoolClassId(),
+                request.sectionId());
+
+        SchoolClass schoolClass = null;
+        ClassSection section = null;
+
+        if (request.scopeType() == AssessmentScope.CLASS) {
+            schoolClass = requireActiveClassInInstitution(
+                    request.schoolClassId(), institution.getId());
+        } else if (request.scopeType() == AssessmentScope.SECTION) {
+            section = resolveAssessmentSection(
+                    request.sectionId(), institution.getId());
+
+            if (!section.getSchoolClass().isActive()) {
+                throw new BusinessRuleViolationException(
+                        "Cannot create an assessment for an inactive class.");
+            }
+        }
+
         Assessment assessment = Assessment.builder()
                 .institution(institution)
+                .scopeType(request.scopeType())
+                .schoolClass(schoolClass)
+                .section(section)
                 .name(request.name().trim())
                 .subjectName(request.subjectName().trim())
                 .assessmentDate(request.assessmentDate())
@@ -150,21 +157,14 @@ public class AssessmentService {
                 throw new AccessDeniedException(
                         "You are not authorized to read assessments for this section");
             }
-
-            return assessmentRepository
-                    .searchBySectionIds(
-                            institutionId,
-                            Set.of(sectionId),
-                            fromDate,
-                            toDate,
-                            pageable)
-                    .map(this::toAssessmentResponse);
         }
 
         return assessmentRepository
-                .searchBySectionIds(
+                .searchAccessibleToSections(
                         institutionId,
-                        allowedSectionIds,
+                        sectionId == null
+                                ? allowedSectionIds
+                                : Set.of(sectionId),
                         fromDate,
                         toDate,
                         pageable)
@@ -215,16 +215,14 @@ public class AssessmentService {
                     "Every student must be active and belong to the assessment institution.");
         }
 
-        restriction.ifPresent(allowedSectionIds -> {
-            requireAssessmentSectionAccess(assessment, allowedSectionIds);
+        requireStudentsEligibleForAssessment(
+                studentIds, assessment, onDate);
 
-            if (assessment.getSection() != null) {
-                requireStudentsInSection(
-                        studentIds, assessment.getSection().getId(), onDate);
-            } else {
-                requireStudentsInTeachingSections(
-                        studentIds, allowedSectionIds, onDate);
-            }
+        restriction.ifPresent(allowedSectionIds -> {
+            requireAssessmentTeacherAccess(assessment, allowedSectionIds);
+
+            requireStudentsInTeachingSections(
+                    studentIds, allowedSectionIds, onDate);
         });
 
         for (UUID studentId : studentIds) {
@@ -287,7 +285,7 @@ public class AssessmentService {
 
         Set<UUID> allowedSectionIds = restriction.get();
 
-        requireAssessmentSectionAccess(assessment, allowedSectionIds);
+        requireAssessmentTeacherAccess(assessment, allowedSectionIds);
 
         Map<UUID, Set<UUID>> sectionsByStudent =
                 studentSectionResolver.findActiveSectionIds(
@@ -404,6 +402,126 @@ public class AssessmentService {
                 .toList();
     }
 
+    @Transactional
+    public AssessmentResponse updateAssessment(
+            UUID assessmentId,
+            UpdateAssessmentRequest request,
+            Authentication authentication) {
+
+        Assessment assessment = assessmentRepository
+                .findByIdAndActiveTrue(assessmentId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Assessment not found"));
+
+        UUID institutionId = assessment.getInstitution().getId();
+
+        requireInstitutionAccess(authentication, institutionId);
+
+        validateScopeTarget(
+                request.scopeType(),
+                request.schoolClassId(),
+                request.sectionId());
+
+        SchoolClass schoolClass = null;
+        ClassSection section = null;
+
+        if (request.scopeType() == AssessmentScope.CLASS) {
+            schoolClass = requireActiveClassInInstitution(
+                    request.schoolClassId(), institutionId);
+        } else if (request.scopeType() == AssessmentScope.SECTION) {
+            section = resolveAssessmentSection(
+                    request.sectionId(), institutionId);
+
+            if (!section.getSchoolClass().isActive()) {
+                throw new BusinessRuleViolationException(
+                        "Cannot use an inactive school class.");
+            }
+        }
+
+        BigDecimal highestRecordedMark =
+                assessmentRepository.findHighestRecordedMark(assessmentId);
+
+        boolean marksExist = highestRecordedMark != null;
+
+        if (marksExist) {
+            boolean scopeChanged =
+                    assessment.getScopeType() != request.scopeType()
+                            || !java.util.Objects.equals(
+                            assessment.getSchoolClass() == null
+                                    ? null : assessment.getSchoolClass().getId(),
+                            request.schoolClassId())
+                            || !java.util.Objects.equals(
+                            assessment.getSection() == null
+                                    ? null : assessment.getSection().getId(),
+                            request.sectionId());
+
+            boolean dateChanged = !assessment.getAssessmentDate()
+                    .equals(request.assessmentDate());
+
+            if (scopeChanged || dateChanged) {
+                throw new BusinessRuleViolationException(
+                        "Assessment scope and date cannot be changed after marks have been recorded.");
+            }
+
+            if (request.maxMarks().compareTo(highestRecordedMark) < 0) {
+                throw new BusinessRuleViolationException(
+                        "Maximum marks cannot be lower than the highest recorded mark: "
+                                + highestRecordedMark);
+            }
+        }
+
+        assessment.setScopeType(request.scopeType());
+        assessment.setSchoolClass(schoolClass);
+        assessment.setSection(section);
+        assessment.setName(request.name().trim());
+        assessment.setSubjectName(request.subjectName().trim());
+        assessment.setAssessmentDate(request.assessmentDate());
+        assessment.setMaxMarks(request.maxMarks());
+
+        return toAssessmentResponse(
+                assessmentRepository.save(assessment));
+    }
+
+
+    @Transactional(readOnly = true)
+    public Page<AssessmentRosterItem> getAssessmentRoster(
+            UUID assessmentId,
+            Pageable pageable,
+            Authentication authentication) {
+
+        Assessment assessment = assessmentRepository
+                .findByIdAndActiveTrue(assessmentId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Assessment not found"));
+
+        UUID institutionId = assessment.getInstitution().getId();
+
+        Optional<Set<UUID>> restriction = resolveSectionRestriction(
+                authentication,
+                institutionId,
+                assessment.getAssessmentDate());
+
+        // Institution-level access: return the complete eligible roster.
+        if (restriction.isEmpty()) {
+            return studentMarkRepository.findAssessmentRoster(
+                    assessmentId, pageable);
+        }
+
+        // Teacher access: validate assessment scope and teaching authorization.
+        Set<UUID> allowedSectionIds = restriction.get();
+
+        requireAssessmentTeacherAccess(
+                assessment, allowedSectionIds);
+
+        // The repository limits the roster to authorized sections and
+        // applies the assessment's own scope and eligibility conditions.
+        return studentMarkRepository.findAssessmentRosterForSections(
+                assessmentId,
+                allowedSectionIds,
+                pageable);
+    }
+
+
     private void requireInstitutionAccess(
             Authentication authentication,
             UUID institutionId) {
@@ -459,22 +577,6 @@ public class AssessmentService {
         }
     }
 
-    /**
-     * Rejects a restricted caller when they teach no section at all, or when the
-     * assessment is section-scoped and they do not teach that section.
-     */
-    private void requireAssessmentSectionAccess(
-            Assessment assessment,
-            Set<UUID> allowedSectionIds
-    ) {
-        if (allowedSectionIds.isEmpty()
-                || (assessment.getSection() != null
-                && !allowedSectionIds.contains(
-                        assessment.getSection().getId()))) {
-            throw new AccessDeniedException(
-                    "You are not authorized to access marks for this assessment");
-        }
-    }
 
     /**
      * A section-scoped assessment may only hold marks for students who were
@@ -500,13 +602,18 @@ public class AssessmentService {
         }
     }
 
+
     private void requireStudentMarkAccess(
             Authentication authentication,
             Assessment assessment,
-            StudentMark mark
-    ) {
+            StudentMark mark) {
+
         UUID institutionId = assessment.getInstitution().getId();
         LocalDate onDate = assessment.getAssessmentDate();
+        UUID studentId = mark.getStudent().getId();
+
+        requireStudentsEligibleForAssessment(
+                List.of(studentId), assessment, onDate);
 
         Optional<Set<UUID>> restriction = resolveSectionRestriction(
                 authentication, institutionId, onDate);
@@ -517,12 +624,12 @@ public class AssessmentService {
 
         Set<UUID> allowedSectionIds = restriction.get();
 
-        requireAssessmentSectionAccess(assessment, allowedSectionIds);
+        requireAssessmentTeacherAccess(assessment, allowedSectionIds);
+
         requireStudentsInTeachingSections(
-                List.of(mark.getStudent().getId()),
-                allowedSectionIds,
-                onDate);
+                List.of(studentId), allowedSectionIds, onDate);
     }
+
 
     private UserAccount getAuthenticatedAccount(
             Authentication authentication) {
@@ -546,6 +653,9 @@ public class AssessmentService {
         return new AssessmentResponse(
                 assessment.getId(),
                 assessment.getInstitution().getId(),
+                assessment.getScopeType(),
+                assessment.getSchoolClass() == null
+                        ? null : assessment.getSchoolClass().getId(),
                 assessment.getSection() == null
                         ? null : assessment.getSection().getId(),
                 assessment.getName(),
@@ -612,4 +722,140 @@ public class AssessmentService {
                 mark.getVersion()
         );
     }
+
+    private void validateScopeTarget(
+            AssessmentScope scopeType,
+            UUID schoolClassId,
+            UUID sectionId) {
+
+        if (scopeType == null) {
+            throw new BusinessRuleViolationException(
+                    "Assessment scope is required.");
+        }
+
+        boolean valid = switch (scopeType) {
+            case INSTITUTION ->
+                    schoolClassId == null && sectionId == null;
+            case CLASS ->
+                    schoolClassId != null && sectionId == null;
+            case SECTION ->
+                    schoolClassId == null && sectionId != null;
+        };
+
+        if (!valid) {
+            throw new BusinessRuleViolationException(
+                    "Provide exactly the target required by the assessment scope.");
+        }
+    }
+
+    private SchoolClass requireActiveClassInInstitution(
+            UUID schoolClassId,
+            UUID institutionId) {
+
+        SchoolClass schoolClass = schoolClassRepository.findById(schoolClassId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("School class not found"));
+
+        UUID classInstitutionId = schoolClass.getAcademicYear()
+                .getInstitution()
+                .getId();
+
+        if (!institutionId.equals(classInstitutionId)) {
+            throw new BusinessRuleViolationException(
+                    "School class does not belong to the requested institution.");
+        }
+
+        if (!schoolClass.isActive()) {
+            throw new BusinessRuleViolationException(
+                    "Cannot use an inactive school class.");
+        }
+
+        return schoolClass;
+    }
+
+
+    private void requireStudentsEligibleForAssessment(
+            Collection<UUID> studentIds,
+            Assessment assessment,
+            LocalDate onDate) {
+
+        Map<UUID, Set<UUID>> sectionsByStudent =
+                studentSectionResolver.findActiveSectionIds(studentIds, onDate);
+
+        for (UUID studentId : studentIds) {
+            Set<UUID> enrolledSectionIds =
+                    sectionsByStudent.getOrDefault(studentId, Set.of());
+
+            boolean eligible = switch (assessment.getScopeType()) {
+                case INSTITUTION -> !enrolledSectionIds.isEmpty();
+
+                case CLASS -> enrolledSectionIds.stream().anyMatch(sectionId ->
+                        classSectionRepository.findById(sectionId)
+                                .map(section -> section.getSchoolClass().getId()
+                                        .equals(assessment.getSchoolClass().getId()))
+                                .orElse(false));
+
+                case SECTION -> enrolledSectionIds.contains(
+                        assessment.getSection().getId());
+            };
+
+            if (!eligible) {
+                throw new BusinessRuleViolationException(
+                        "Student " + studentId
+                                + " is not eligible for this assessment on "
+                                + onDate + ".");
+            }
+        }
+    }
+
+
+    private void requireAssessmentTeacherAccess(
+            Assessment assessment,
+            Set<UUID> allowedSectionIds) {
+
+        if (allowedSectionIds.isEmpty()) {
+            throw new AccessDeniedException(
+                    "You are not authorized to access this assessment.");
+        }
+
+        switch (assessment.getScopeType()) {
+
+            case INSTITUTION -> {
+                // Institution-wide assessment scope does not grant
+                // access to every student.
+                //
+                // The calling operation must still restrict individual
+                // students to the teacher's authorized sections.
+            }
+
+            case SECTION -> {
+                UUID assessmentSectionId =
+                        assessment.getSection().getId();
+
+                if (!allowedSectionIds.contains(assessmentSectionId)) {
+                    throw new AccessDeniedException(
+                            "You are not authorized for this assessment section.");
+                }
+            }
+
+            case CLASS -> {
+                UUID assessmentClassId =
+                        assessment.getSchoolClass().getId();
+
+                boolean teachesClass = classSectionRepository
+                        .findBySchoolClass_IdAndActiveTrueOrderByNameAsc(
+                                assessmentClassId)
+                        .stream()
+                        .anyMatch(section ->
+                                allowedSectionIds.contains(section.getId()));
+
+                if (!teachesClass) {
+                    throw new AccessDeniedException(
+                            "You are not authorized for this assessment class.");
+                }
+            }
+        }
+    }
+
+
 }

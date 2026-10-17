@@ -105,4 +105,29 @@ public class AssessmentController {
         return assessmentService.getStudentMarkAudit(
                 markId, authentication);
     }
+
+
+    @PutMapping("/{assessmentId}")
+    @PreAuthorize("hasAuthority('ASSESSMENT_UPDATE')")
+    public AssessmentResponse updateAssessment(
+            @PathVariable UUID assessmentId,
+            @Valid @RequestBody UpdateAssessmentRequest request,
+            Authentication authentication) {
+
+        return assessmentService.updateAssessment(
+                assessmentId, request, authentication);
+    }
+
+
+    @GetMapping("/{assessmentId}/roster")
+    @PreAuthorize("hasAuthority('MARKS_READ')")
+    public Page<AssessmentRosterItem> getAssessmentRoster(
+            @PathVariable UUID assessmentId,
+            @PageableDefault(size = 100) Pageable pageable,
+            Authentication authentication) {
+
+        return assessmentService.getAssessmentRoster(
+                assessmentId, pageable, authentication);
+    }
+
 }

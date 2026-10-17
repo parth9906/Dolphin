@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class PasswordHashPrinter implements CommandLineRunner {
 
-    private static final String RAW_PASSWORD = "Admin@123";
+    private static final String RAW_PASSWORD = "abc@123";
 
     @Override
     public void run(String... args) {

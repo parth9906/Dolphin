@@ -31,8 +31,8 @@ public class StudentSectionResolver {
     public Set<UUID> findActiveSectionIds(UUID studentId, LocalDate onDate) {
         Set<UUID> sectionIds = new HashSet<>();
 
-        for (StudentEnrollment enrollment : enrollmentRepository
-                .findByStudent_IdAndStatus(studentId, EnrollmentStatus.ACTIVE)) {
+        for (StudentEnrollment enrollment :
+                enrollmentRepository.findByStudent_Id(studentId)) {
             if (coversDate(enrollment, onDate)) {
                 sectionIds.add(enrollment.getSection().getId());
             }
@@ -52,8 +52,8 @@ public class StudentSectionResolver {
 
         Map<UUID, Set<UUID>> sectionIdsByStudent = new HashMap<>();
 
-        for (StudentEnrollment enrollment : enrollmentRepository
-                .findByStudent_IdInAndStatus(studentIds, EnrollmentStatus.ACTIVE)) {
+        for (StudentEnrollment enrollment :
+                enrollmentRepository.findByStudent_IdIn(studentIds)) {
             if (coversDate(enrollment, onDate)) {
                 sectionIdsByStudent
                         .computeIfAbsent(

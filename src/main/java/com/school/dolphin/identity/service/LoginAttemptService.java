@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -77,19 +78,40 @@ public class LoginAttemptService {
 
         Instant now = Instant.now();
 
+        // Remove entries whose lockout or failure window has expired.
         attempts.entrySet().removeIf(entry -> {
             Attempt attempt = entry.getValue();
 
-            boolean locked = attempt.lockedUntil() != null
-                    && now.isBefore(attempt.lockedUntil());
+            if (attempt.lockedUntil() != null) {
+                return !now.isBefore(attempt.lockedUntil());
+            }
 
-            return !locked
-                    && now.isAfter(
-                            attempt.windowStart().plus(FAILURE_WINDOW));
+            return !now.isBefore(
+                    attempt.windowStart().plus(FAILURE_WINDOW));
         });
 
-        if (attempts.size() > MAX_TRACKED_KEYS) {
-            attempts.clear();
+        // If still oversized, evict the oldest entry that is not
+        // currently locked. Never clear active lockouts.
+        while (attempts.size() > MAX_TRACKED_KEYS) {
+            Map.Entry<String, Attempt> candidate = attempts.entrySet()
+                    .stream()
+                    .filter(entry -> {
+                        Attempt attempt = entry.getValue();
+
+                        return attempt.lockedUntil() == null
+                                || !now.isBefore(attempt.lockedUntil());
+                    })
+                    .min(Comparator.comparing(
+                            (Map.Entry<String, Attempt> entry) ->
+                                    entry.getValue().windowStart()))
+                    .orElse(null);
+
+            // Active lockouts are more important than the size target.
+            if (candidate == null) {
+                break;
+            }
+
+            attempts.remove(candidate.getKey(), candidate.getValue());
         }
     }
 

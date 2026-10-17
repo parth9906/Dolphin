@@ -41,16 +41,21 @@ public interface StudentEnrollmentRepository
             EnrollmentStatus status
     );
 
+
+    List<StudentEnrollment> findByStudent_Id(UUID studentId);
+
+    List<StudentEnrollment> findByStudent_IdIn(Collection<UUID> studentIds);
+
+
     @Query(value = """
-    SELECT s.*
-      FROM student s
-      JOIN student_enrollment e ON e.student_id = s.id
-     WHERE e.section_id = :sectionId
-       AND e.status = 'ACTIVE'
-       AND e.start_date <= :lessonDate
-       AND (e.end_date IS NULL OR e.end_date >= :lessonDate)
-     ORDER BY s.last_name, s.first_name
-    """, nativeQuery = true)
+        SELECT s.*
+        FROM student s
+        JOIN student_enrollment e ON e.student_id = s.id
+        WHERE e.section_id = :sectionId
+          AND e.start_date <= :lessonDate
+          AND (e.end_date IS NULL OR e.end_date >= :lessonDate)
+        ORDER BY s.last_name, s.first_name
+        """, nativeQuery = true)
     List<Student> findActiveRosterForSectionOnDate(
             @Param("sectionId") UUID sectionId,
             @Param("lessonDate") LocalDate lessonDate);
@@ -64,4 +69,38 @@ public interface StudentEnrollmentRepository
             Collection<UUID> studentIds,
             EnrollmentStatus status
     );
+
+    @Query("""
+        SELECT e
+        FROM StudentEnrollment e
+        JOIN FETCH e.student s
+        JOIN FETCH e.section sec
+        JOIN FETCH sec.schoolClass sc
+        WHERE sc.academicYear.id = :academicYearId
+          AND e.status = :status
+        ORDER BY s.lastName ASC, s.firstName ASC, s.admissionNumber ASC
+        """)
+    List<StudentEnrollment> findByAcademicYearAndStatusOrdered(
+            @Param("academicYearId") UUID academicYearId,
+            @Param("status") EnrollmentStatus status);
+
+
+    @Query("""
+    SELECT
+        e.section.id AS sectionId,
+        COUNT(e.id) AS enrollmentCount
+    FROM StudentEnrollment e
+    WHERE e.section.id IN :sectionIds
+      AND e.status = :status
+    GROUP BY e.section.id
+    """)
+    List<SectionEnrollmentCount> countBySectionIdsAndStatus(
+            @Param("sectionIds") Collection<UUID> sectionIds,
+            @Param("status") EnrollmentStatus status
+    );
+
+    interface SectionEnrollmentCount {
+        UUID getSectionId();
+        long getEnrollmentCount();
+    }
 }

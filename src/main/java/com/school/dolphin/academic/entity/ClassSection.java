@@ -20,6 +20,9 @@ public class ClassSection {
     @JoinColumn(name = "school_class_id", nullable = false)
     private SchoolClass schoolClass;
 
+    @Column(name = "institution_id", nullable = false, insertable = false, updatable = false)
+    private UUID institutionId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "campus_id")
     private Campus campus;

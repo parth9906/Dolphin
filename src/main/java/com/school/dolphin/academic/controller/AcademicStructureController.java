@@ -166,4 +166,17 @@ public class AcademicStructureController {
     ) {
         return service.closeAcademicYear(academicYearId, authentication);
     }
+
+
+    @PutMapping("/sections/{sectionId}")
+    @PreAuthorize("hasAuthority('SECTION_UPDATE')")
+    public UUID updateSection(
+            @PathVariable UUID sectionId,
+            @Valid @RequestBody UpdateClassSectionRequest request,
+            Authentication authentication
+    ) {
+        return service.updateSection(
+                sectionId, request, authentication);
+    }
+
 }

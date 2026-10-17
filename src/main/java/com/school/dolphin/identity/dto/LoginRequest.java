@@ -1,5 +1,6 @@
 package com.school.dolphin.identity.dto;
 
+import com.school.dolphin.identity.validation.BcryptPassword;
 import jakarta.validation.constraints.NotBlank;
 
 public record LoginRequest(
@@ -8,6 +9,7 @@ public record LoginRequest(
         String username,
 
         @NotBlank(message = "Password is required")
+        @BcryptPassword
         String password
 ) {
 }
