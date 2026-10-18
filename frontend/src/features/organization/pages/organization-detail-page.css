@@ -1,0 +1,277 @@
+
+.org-detail-page {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px;
+  color: var(--color-text, #172033);
+}
+
+.org-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 26px;
+  color: #3157a4;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.org-detail-back:hover {
+  text-decoration: underline;
+}
+
+.org-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.org-detail-header__icon {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #dbe4f0;
+  border-radius: 15px;
+  background: #f1f5ff;
+  color: #3157a4;
+}
+
+.org-detail-header__content {
+  min-width: 0;
+  flex: 1;
+}
+
+.org-detail-header h1 {
+  margin: 5px 0;
+  overflow-wrap: anywhere;
+  font-size: clamp(23px, 3vw, 31px);
+  letter-spacing: -0.035em;
+}
+
+.org-detail-header__content p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.org-detail-card {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 3px 12px rgb(15 23 42 / 3%);
+}
+
+.org-detail-card__header {
+  padding: 22px;
+  border-bottom: 1px solid #edf1f6;
+}
+
+.org-detail-card__header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.org-detail-card__header p {
+  margin: 7px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.org-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.org-detail-field {
+  min-width: 0;
+  padding: 20px 22px;
+  border-bottom: 1px solid #edf1f6;
+}
+
+.org-detail-field:nth-child(odd):not(.org-detail-field--full) {
+  border-right: 1px solid #edf1f6;
+}
+
+.org-detail-field--full {
+  grid-column: 1 / -1;
+}
+
+.org-detail-field dt {
+  margin-bottom: 9px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.org-detail-field dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 550;
+}
+
+.org-detail-id {
+  font-family: monospace;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+}
+
+.org-detail-state {
+  display: flex;
+  min-height: 280px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 28px;
+  color: #64748b;
+  text-align: center;
+}
+
+.org-detail-state h1 {
+  margin: 4px 0 0;
+  color: #172033;
+  font-size: 22px;
+}
+
+.org-detail-state p {
+  max-width: 480px;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.org-detail-state--error > svg {
+  color: #b42318;
+}
+
+@media (max-width: 640px) {
+  .org-detail-page {
+    padding: 20px 14px;
+  }
+
+  .org-detail-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .org-detail-header > .org-status {
+    margin-left: 68px;
+  }
+
+  .org-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .org-detail-field:nth-child(odd):not(.org-detail-field--full) {
+    border-right: 0;
+  }
+
+  .org-detail-field--full {
+    grid-column: auto;
+  }
+}
+
+.org-lookup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+}
+
+.org-lookup-grid .org-detail-card p {
+  line-height: 1.6;
+}
+
+.org-lookup-grid form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.org-lookup-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.org-lookup-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 0.625rem;
+  background: var(--input-background, transparent);
+  color: inherit;
+  font: inherit;
+}
+
+.org-lookup-input:focus-visible {
+  outline: 2px solid var(--focus-color, #64748b);
+  outline-offset: 2px;
+}
+
+.org-lookup-error {
+  margin: 0;
+  color: #dc2626;
+  font-size: 0.875rem;
+}
+
+@media (max-width: 700px) {
+  .org-lookup-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+
+/* Organization lookup cards */
+.org-lookup-grid .org-detail-card {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 24px;
+}
+
+.org-lookup-grid .org-detail-card h2 {
+  margin: 0 0 12px;
+  color: #172033;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.35;
+}
+
+.org-lookup-grid .org-detail-card > p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.org-lookup-grid form {
+  width: 100%;
+}
+
+.org-lookup-grid .org-lookup-input {
+  display: block;
+}
+
+.org-lookup-grid .org-button {
+  margin-top: 2px;
+}
+
+@media (max-width: 700px) {
+  .org-lookup-grid .org-detail-card {
+    padding: 18px;
+  }
+}

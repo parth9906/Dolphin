@@ -1,0 +1,210 @@
+.amaudit-dialog {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 36px);
+  max-width: 1080px;
+  overflow: hidden;
+  width: min(1080px, calc(100vw - 32px));
+}
+
+.amaudit-dialog__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.amaudit-table-view {
+  max-height: min(55vh, 560px);
+  overflow: auto;
+}
+
+.amaudit-table {
+  min-width: 900px;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.amaudit-table th,
+.amaudit-table td {
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+.amaudit-table th:nth-child(1) { width: 17%; }
+.amaudit-table th:nth-child(2),
+.amaudit-table th:nth-child(3) { width: 10%; }
+.amaudit-table th:nth-child(4),
+.amaudit-table th:nth-child(5) { width: 17%; }
+.amaudit-table th:nth-child(6) { width: 29%; }
+
+.amaudit-actor-name {
+  color: #293b54;
+  display: block;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.amaudit-actor-email {
+  color: #718098;
+  display: block;
+  font-size: 12px;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.amaudit-actor-unavailable {
+  color: #718098;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.amaudit-cards {
+  display: none;
+}
+
+.amaudit-card {
+  background: #fff;
+  border: 1px solid #e3e9f2;
+  border-radius: 12px;
+  min-width: 0;
+  padding: 15px;
+}
+
+.amaudit-card__date {
+  color: #65748b;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.amaudit-card__marks {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.amaudit-card__mark {
+  background: #f6f8fc;
+  border-radius: 9px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.amaudit-card__label {
+  color: #718098;
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.amaudit-card__value {
+  color: #263750;
+  display: block;
+  font-size: 19px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.amaudit-card__details {
+  display: grid;
+  gap: 13px;
+  margin-top: 15px;
+}
+
+.amaudit-card__detail {
+  min-width: 0;
+}
+
+.amaudit-card__detail p {
+  color: #354760;
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.amaudit-card__actor {
+  border-top: 1px solid #edf0f5;
+  margin-top: 15px;
+  padding-top: 13px;
+}
+
+@media (max-width: 760px) {
+  .amaudit-dialog {
+    max-height: calc(100dvh - 20px);
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .amaudit-dialog .asm-dialog__header {
+    gap: 12px;
+    padding: 17px 16px;
+  }
+
+  .amaudit-dialog .asm-dialog__header h2 {
+    font-size: 19px;
+    overflow-wrap: anywhere;
+  }
+
+  .amaudit-table-view {
+    display: none;
+  }
+
+  .amaudit-cards {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .amaudit-card {
+    padding: 13px;
+  }
+
+  .amaudit-card__mark {
+    padding: 10px;
+  }
+
+  .amaudit-card__value {
+    font-size: 18px;
+  }
+
+  .amaudit-dialog .asm-dialog__footer {
+    background: white;
+    flex-shrink: 0;
+    margin-top: 0;
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+  }
+
+  .amaudit-dialog .asm-dialog__footer .asm-button {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 360px) {
+  .amaudit-card__marks {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Keep the audit dialog footer aligned with the header edges. */
+.amaudit-dialog .asm-dialog__footer {
+  align-items: center;
+  flex-shrink: 0;
+  justify-content: flex-end;
+  margin-top: 0;
+  padding: 16px 24px 20px;
+}
+
+@media (max-width: 760px) {
+  .amaudit-dialog .asm-dialog__footer {
+    justify-content: flex-end;
+    padding: 12px 16px max(12px, env(safe-area-inset-bottom));
+  }
+}
