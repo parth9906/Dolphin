@@ -2,7 +2,7 @@
 
 ## Working constraints
 
-- Whale is the only repository to modify; Dolphin is read-only and is the contract/security source of truth.
+- Dolphin is the only repository to modify; Dolphin is read-only and is the contract/security source of truth.
 - Inspect the current source before every change. Do not guess file contents or invent endpoints/DTOs.
 - Preserve current functionality and user changes. Do not create timestamped `.bak` files or duplicate source files.
 - Make small changes, run checks that are actually available, and record limitations honestly.

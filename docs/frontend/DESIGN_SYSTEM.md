@@ -1,8 +1,8 @@
-# Whale Design System
+# Dolphin Design System
 
 ## Current approach
 
-Whale currently uses global CSS tokens in `src/index.css` and feature-specific CSS files. Retain this approach until an actual need justifies a styling-system migration; do not mix Tailwind, CSS Modules, and ad hoc inline styling without a migration plan.
+Dolphin currently uses global CSS tokens in `src/index.css` and feature-specific CSS files. Retain this approach until an actual need justifies a styling-system migration; do not mix Tailwind, CSS Modules, and ad hoc inline styling without a migration plan.
 
 ## Existing global tokens
 

@@ -1,4 +1,4 @@
-# Whale UI/UX Audit
+# Dolphin UI/UX Audit
 
 **Method:** static review of the uploaded React/TypeScript source and CSS. This is not a browser-based responsive/accessibility test; no viewport screenshots or automated accessibility checks were run.
 

@@ -1,8 +1,8 @@
-# Whale Frontend Refactor Plan
+# Dolphin Frontend Refactor Plan
 
 ## Guardrails
 
-- Whale is the only repository to change. Dolphin is read-only reference material for real API contracts and authorization.
+- Dolphin is the only repository to change. Dolphin is read-only reference material for real API contracts and authorization.
 - Preserve working behavior and the current stack.
 - No new endpoints, mock responses, fake offline success, speculative abstractions, or backup copies.
 - Inspect each file before changing it; keep each change small and run relevant static checks.

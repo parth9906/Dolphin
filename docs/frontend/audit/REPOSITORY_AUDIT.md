@@ -1,6 +1,6 @@
-# Whale Frontend Repository Audit
+# Dolphin Frontend Repository Audit
 
-**Audit basis:** `whale(3).zip` frontend source, cross-checked against `dolphin(5).zip` backend source and its API contract documentation. This is a static source audit; no application, database, or tests were run.
+**Audit basis:** `Dolphin(3).zip` frontend source, cross-checked against `dolphin(5).zip` backend source and its API contract documentation. This is a static source audit; no application, database, or tests were run.
 
 ## Repository and stack
 

@@ -1,8 +1,8 @@
-# Whale Frontend Architecture
+# Dolphin Frontend Architecture
 
 ## Scope and source of truth
 
-Whale is the React + TypeScript frontend. Dolphin is the Spring Boot backend and remains read-only during frontend work. Dolphin owns API contracts, business rules, authentication, permissions, and organization-scope enforcement. The frontend may improve navigation and feedback, but it cannot grant access by selecting or hiding an organization.
+Dolphin is the React + TypeScript frontend. Dolphin is the Spring Boot backend and remains read-only during frontend work. Dolphin owns API contracts, business rules, authentication, permissions, and organization-scope enforcement. The frontend may improve navigation and feedback, but it cannot grant access by selecting or hiding an organization.
 
 ## Runtime structure
 

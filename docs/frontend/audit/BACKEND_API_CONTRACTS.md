@@ -1,10 +1,10 @@
-# Whale ↔ Dolphin API Contract Audit
+# Dolphin ↔ Dolphin API Contract Audit
 
 ## Source of truth
 
 Backend source and module contracts are in `dolphin/src/main/java/com/school/dolphin/**` and `dolphin/docs/api/README.md`. The backend index states that endpoints are under `/api/v1`, authenticated calls use JWT bearer tokens, controller permissions use `@PreAuthorize`, and organization/institution/campus scope is checked in service methods. API contracts must not be inferred from TypeScript alone.
 
-Whale's `frontend/src/lib/api/api-client.ts` uses `VITE_API_BASE_URL` (default `/api/v1`) and appends relative service paths. Services must therefore pass paths without a leading slash or a repeated `/api/v1` prefix.
+Dolphin's `frontend/src/lib/api/api-client.ts` uses `VITE_API_BASE_URL` (default `/api/v1`) and appends relative service paths. Services must therefore pass paths without a leading slash or a repeated `/api/v1` prefix.
 
 ## Authentication and access context
 
@@ -15,7 +15,7 @@ Whale's `frontend/src/lib/api/api-client.ts` uses `VITE_API_BASE_URL` (default `
 | POST | `/api/v1/auth/logout` | `lib/auth/auth-service.ts` | `identity/controller` | Revokes refresh session. |
 | GET | `/api/v1/me/access-context` | Not called by the frontend | Legacy backend endpoint; access context is consumed from login and refresh responses. |
 
-## Organization endpoints used by Whale
+## Organization endpoints used by Dolphin
 
 `features/organization/api/organization-service.ts` uses these relative paths. Actual controller mappings were verified in Dolphin:
 
@@ -40,7 +40,7 @@ Creation support: cluster and institution creation use the documented `POST /api
 
 Important discrepancy: Dolphin's organization contract explicitly documents **no update/deactivate/delete endpoints**, and only read-by-ID plus child lists where shown. Do not add UI mutations for absent endpoints. The hierarchy in the backend README is `Enterprise → Region → Cluster → Institution → Campus` (campus optional), while some older frontend copy may say school/college.
 
-## Leave endpoints used by Whale
+## Leave endpoints used by Dolphin
 
 Verified against `leave/controller/StaffLeaveController.java`, `StudentLeaveController.java`, and `leave/README.md`:
 
@@ -59,9 +59,9 @@ Verified against `leave/controller/StaffLeaveController.java`, `StudentLeaveCont
 | POST | `/api/v1/student-leave/{id}/cancel` | No body → response | `STUDENT_LEAVE_CANCEL` | Institution. |
 | GET | `/api/v1/student-leave/{id}/audit` | Audit list | `STUDENT_LEAVE_AUDIT_READ` | Institution. |
 
-Whale's `leave-service.ts` paths match these controller mappings. Dolphin's list endpoint default page size is 20, while Whale requests `size=50`; this is within the documented max page size of 100. The frontend currently requests only page 0, so it does not expose pagination beyond the first 50 results.
+Dolphin's `leave-service.ts` paths match these controller mappings. Dolphin's list endpoint default page size is 20, while Dolphin requests `size=50`; this is within the documented max page size of 100. The frontend currently requests only page 0, so it does not expose pagination beyond the first 50 results.
 
-Whale also calls `GET /api/v1/staff` and `GET /api/v1/students` for lookup lists. Verify each feature's permission/scope behavior against `staff/README.md`, `student/README.md`, and the respective controller/service before changing filters or response handling.
+Dolphin also calls `GET /api/v1/staff` and `GET /api/v1/students` for lookup lists. Verify each feature's permission/scope behavior against `staff/README.md`, `student/README.md`, and the respective controller/service before changing filters or response handling.
 
 ## Other frontend feature APIs
 
@@ -88,7 +88,7 @@ These contracts must be cross-checked endpoint-by-endpoint before refactoring ea
 
 ## Error contract
 
-Dolphin documents `ErrorResponse` with `timestamp`, `status`, `code`, `message`, and `path` for handled application errors; relevant codes include `VALIDATION_ERROR` (400), `ACCESS_DENIED` (403), `RESOURCE_NOT_FOUND` (404), `DUPLICATE_RESOURCE` / `CONSTRAINT_VIOLATION` (409), `BUSINESS_RULE_VIOLATION` (422), and `TOO_MANY_LOGIN_ATTEMPTS` (429). Unauthenticated filter-chain 401 responses may not use this envelope. Whale's API client handles both JSON parsing failures and generic network/timeout errors; UI layers should map status/code to useful messages without hiding backend detail.
+Dolphin documents `ErrorResponse` with `timestamp`, `status`, `code`, `message`, and `path` for handled application errors; relevant codes include `VALIDATION_ERROR` (400), `ACCESS_DENIED` (403), `RESOURCE_NOT_FOUND` (404), `DUPLICATE_RESOURCE` / `CONSTRAINT_VIOLATION` (409), `BUSINESS_RULE_VIOLATION` (422), and `TOO_MANY_LOGIN_ATTEMPTS` (429). Unauthenticated filter-chain 401 responses may not use this envelope. Dolphin's API client handles both JSON parsing failures and generic network/timeout errors; UI layers should map status/code to useful messages without hiding backend detail.
 
 ## Known gaps in this contract audit
 

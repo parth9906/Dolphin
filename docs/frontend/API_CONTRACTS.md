@@ -2,7 +2,7 @@
 
 ## Contract authority
 
-The authoritative API definitions are in the Dolphin backend repository, particularly its API documentation and the corresponding Spring controllers, request/response DTOs, services, security configuration, and authorization helpers. Whale must not infer backend behavior from a frontend call alone.
+The authoritative API definitions are in the Dolphin backend repository, particularly its API documentation and the corresponding Spring controllers, request/response DTOs, services, security configuration, and authorization helpers. Dolphin must not infer backend behavior from a frontend call alone.
 
 ## Frontend transport
 

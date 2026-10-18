@@ -22,7 +22,7 @@ The backend API contract describes:
 
 `OrganizationScopeAuthorization.java` resolves the authenticated user from the server-side principal and loads that user's scopes. Client-provided organization IDs are target selectors, not proof of authorization.
 
-## Whale implementation
+## Dolphin implementation
 
 - `lib/auth/auth-provider.tsx` loads the current access context and exposes `hasPermission`, `hasAnyPermission`, and `hasRole`.
 - `app/ProtectedRoute.tsx` requires an authenticated session.
@@ -39,7 +39,7 @@ The centralized permission context is useful for UX. The working copy now has a 
 2. **Cached data across organization changes:** TanStack Query is global (`app/providers.tsx`); feature query keys are not uniformly demonstrated to include a scope identifier. Scope changes must invalidate/remove scoped caches and avoid rendering old data while new scope loads.
 3. **Stale asynchronous responses:** requests started for one organization must not write their results after context switches. The leave page uses an `active`/`live` guard for some effects but its request-list callback has no request identity/cancellation guard.
 4. **Client storage is mutable:** malformed or manually changed `sessionStorage` data must be validated and never used as authorization evidence.
-5. **Direct/deep links:** route guards verify permissions, not resource-level scope. Dolphin must reject out-of-scope resource requests; Whale should render 403 safely and clear sensitive stale content.
+5. **Direct/deep links:** route guards verify permissions, not resource-level scope. Dolphin must reject out-of-scope resource requests; Dolphin should render 403 safely and clear sensitive stale content.
 6. **Logout/user switching:** auth session changes must remove any user- or organization-scoped cached data. Confirm the current logout path and query-cache behavior before modifying it.
 
 ## Required behavior for a centralized context

@@ -2,7 +2,7 @@
 
 ## Scope
 
-- Changed repository: Whale frontend only.
+- Changed repository: Dolphin frontend only.
 - Reference repository: Dolphin backend, read-only.
 - Backend endpoints, DTOs, services, migrations, and permissions were not changed.
 - Existing API service files were not modified by this change set.
@@ -37,7 +37,7 @@ Syntax transpilation is not a substitute for a full TypeScript typecheck, lint, 
 
 ## Remaining high-priority work
 
-1. Install the locked dependencies in the real Whale repository and run typecheck/build/lint.
+1. Install the locked dependencies in the real Dolphin repository and run typecheck/build/lint.
 2. Add automated tests for organization changes, session changes, 401/403 behavior, and query-cache isolation.
 3. Verify active requests cannot commit stale results in every feature, not just Leave.
 4. Decompose the oversized Attendance, Assessment Management, User Management, Timetable, and Student pages into feature-owned components/hooks one page at a time.
