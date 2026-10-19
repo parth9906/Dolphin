@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useSelectedInstitutionId } from "../../organization/hooks/organization-selection";
 import { confirmAction } from "../../../lib/ui/dialogs";
-import Select from "react-select";
 import {
   AlertCircle,
   BedDouble,

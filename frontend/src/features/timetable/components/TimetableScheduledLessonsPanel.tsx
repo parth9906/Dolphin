@@ -1,5 +1,5 @@
 import type { Dispatch, FormEventHandler, SetStateAction } from "react";
-import { CalendarDays, LoaderCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { LoaderCircle, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 import { Dropdown, Empty, type Option } from "./TimetableControls";
 import type { ScheduledLesson } from "../api/timetable-types";

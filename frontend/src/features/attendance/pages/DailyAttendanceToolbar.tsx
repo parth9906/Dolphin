@@ -20,7 +20,6 @@ export function DailyAttendanceToolbar({
   attendanceDate,
   studentCount,
   loading,
-  sectionSelected,
   canMark,
   canUpdate,
   editableRowCount,

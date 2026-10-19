@@ -503,7 +503,7 @@ export function DisciplinePage() {
 
       {canRead && (
         <DisciplineIncidentRegister
-          incidents={incidents}
+          incidents={filteredIncidents}
           pageData={pageData}
           page={page}
           loading={loading}

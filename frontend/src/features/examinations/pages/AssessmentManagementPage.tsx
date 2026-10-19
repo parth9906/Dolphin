@@ -577,12 +577,6 @@ export function AssessmentManagementPage() {
       setSavingMarkId(null);
     }
   }
-
-  const resultByStudentId = useMemo(
-    () => new Map(results.map((mark) => [mark.studentId, mark])),
-    [results],
-  );
-
   return (
     <main className="asm-page">
       <header className="asm-header">

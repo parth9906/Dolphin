@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
-import { AlertCircle, ClipboardCheck, Pencil, Save, X } from "lucide-react";
+import { AlertCircle, ClipboardCheck, Save, X } from "lucide-react";
 
 import type { Assessment, AssessmentRosterItem, StudentMark } from "../api/assessment-types";
 import { displayNumber, formatDate } from "./assessment-management-utils";

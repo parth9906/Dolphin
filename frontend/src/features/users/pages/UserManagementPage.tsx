@@ -37,7 +37,6 @@ import {
   emptyInvitation,
   errorText,
   PAGE_SIZE,
-  scopeTitle,
   toScopeOptions,
   unwrap,
   type InvitationForm,

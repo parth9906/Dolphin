@@ -19,7 +19,6 @@ import type {
 } from "../api/attendance-types";
 import { useAttendanceQueries } from "./use-attendance-queries";
 import {
-  displayDate,
   errorText,
   localDateString,
 } from "./attendance-page-utils";

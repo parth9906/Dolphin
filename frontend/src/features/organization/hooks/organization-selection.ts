@@ -46,51 +46,58 @@ function isStoredEntity(value: unknown): value is OrganizationEntity {
   );
 }
 
+function hasStringProperty(
+  value: unknown,
+  property: string,
+): value is Record<string, unknown> {
+  return isRecord(value) && typeof value[property] === "string";
+}
+
 function readStoredSelection(): OrganizationSelection {
   try {
     const storedText = window.sessionStorage.getItem(
       ORGANIZATION_SELECTION_STORAGE_KEY,
     );
+
     if (!storedText) return EMPTY_SELECTION;
 
     const parsed: unknown = JSON.parse(storedText);
+
     if (!isRecord(parsed)) return EMPTY_SELECTION;
 
-    const enterpriseValue = parsed.enterprise;
-    const regionValue = parsed.region;
-    const clusterValue = parsed.cluster;
-    const institutionValue = parsed.institution;
-    const enterprise = isStoredEntity(enterpriseValue)
+    const enterpriseValue: unknown = parsed.enterprise;
+    const regionValue: unknown = parsed.region;
+    const clusterValue: unknown = parsed.cluster;
+    const institutionValue: unknown = parsed.institution;
+
+    const enterprise: Enterprise | null = isStoredEntity(enterpriseValue)
       ? (enterpriseValue as Enterprise)
       : null;
 
-    const region =
+    const region: Region | null =
       isStoredEntity(regionValue) &&
-      isRecord(regionValue) &&
-      typeof regionValue.enterpriseId === "string" &&
+      hasStringProperty(regionValue, "enterpriseId") &&
       enterprise !== null
         ? (regionValue as unknown as Region)
         : null;
 
-    const cluster =
+    const cluster: Cluster | null =
       isStoredEntity(clusterValue) &&
-      isRecord(clusterValue) &&
-      typeof clusterValue.regionId === "string" &&
+      hasStringProperty(clusterValue, "regionId") &&
       region !== null
         ? (clusterValue as unknown as Cluster)
         : null;
 
-    const institution =
+    const institution: Institution | null =
       isStoredEntity(institutionValue) &&
-      isRecord(institutionValue) &&
-      typeof institutionValue.clusterId === "string" &&
-      typeof institutionValue.institutionType === "string" &&
+      hasStringProperty(institutionValue, "clusterId") &&
+      hasStringProperty(institutionValue, "institutionType") &&
       cluster !== null
         ? (institutionValue as unknown as Institution)
         : null;
 
-    // Older sessions may still contain a campus selection. Ignore it: the
-    // organization hierarchy now ends at institution.
+    // Older sessions may still contain a campus selection. Ignore it:
+    // the organization hierarchy now ends at institution.
     return { enterprise, region, cluster, institution };
   } catch {
     return EMPTY_SELECTION;
@@ -98,6 +105,7 @@ function readStoredSelection(): OrganizationSelection {
 }
 
 let currentSelection = readStoredSelection();
+
 const listeners = new Set<() => void>();
 
 function notifyListeners() {
@@ -106,7 +114,10 @@ function notifyListeners() {
 
 function subscribe(listener: () => void) {
   listeners.add(listener);
-  return () => listeners.delete(listener);
+
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 function getSelectionSnapshot() {
@@ -169,4 +180,3 @@ export function useSelectedInstitutionId(): string {
     getServerInstitutionIdSnapshot,
   );
 }
-

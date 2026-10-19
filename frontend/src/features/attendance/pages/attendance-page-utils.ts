@@ -1,4 +1,4 @@
-import Select, { type StylesConfig } from "react-select";
+import type { StylesConfig } from "react-select";
 
 import { ApiError } from "../../../lib/api/api-error";
 import type { LessonAttendanceStatus } from "../api/attendance-types";

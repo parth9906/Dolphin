@@ -109,7 +109,7 @@ export function AssessmentCreateDialog({
               </button>
             </header>
 
-            <form className="asm-form" onSubmit={submitAssessment}>
+            <form className="asm-form" onSubmit={onSubmit}>
               <label className="asm-field">
                 <span>Assessment name <b>*</b></span>
                 <input

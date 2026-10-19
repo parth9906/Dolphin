@@ -106,6 +106,7 @@ export function HostelDialog({
   onSubmitAllocation,
   onVacateAllocation,
 }: HostelDialogProps) {
+  if (!dialog) return null;
   const title = dialog.kind === "HOSTEL_CREATE" ? "Create hostel"
     : dialog.kind === "HOSTEL_EDIT" ? "Edit hostel"
     : dialog.kind === "ROOM_CREATE" ? "Add room"

@@ -1,5 +1,5 @@
 import type { Dispatch, FormEventHandler, SetStateAction } from "react";
-import { Clock3, LoaderCircle, Plus, RefreshCw } from "lucide-react";
+import { LoaderCircle, Plus, RefreshCw } from "lucide-react";
 
 import { Dropdown, Empty, Field } from "./TimetableControls";
 import type { TimetableSlot } from "../api/timetable-types";

@@ -115,23 +115,11 @@ function numberValue(value: number | string | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function quantity(value: number | string, unit: string): string {
-  return `${numberValue(value).toLocaleString(undefined, {
-    maximumFractionDigits: 3,
-  })} ${unit}`;
-}
-
 function labelFor(value: string): string {
   return value
     .split("_")
     .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
     .join(" ");
-}
-
-function formatDateTime(value?: string | null): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
 function validateQuantity(value: string): string {

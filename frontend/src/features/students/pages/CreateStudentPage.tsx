@@ -14,7 +14,7 @@ import {
   useInstitutions,
 } from "../../organization/hooks/use-organization";
 import { useOrganizationSelection, setOrganizationSelection } from "../../organization/hooks/organization-selection";
-import type { Campus, Institution } from "../../organization/api/organization-types";
+import type { Institution } from "../../organization/api/organization-types";
 import { StudentSelect } from "./StudentSelect";
 import { studentService } from "../api/student-service";
 import type {

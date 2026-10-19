@@ -9,8 +9,6 @@ import {
   DoorOpen,
   GraduationCap,
   LoaderCircle,
-  Plus,
-  Trash2,
   Users,
 } from "lucide-react";
 

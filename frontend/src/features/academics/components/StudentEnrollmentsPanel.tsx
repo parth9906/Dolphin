@@ -2,7 +2,7 @@ import type { FormEvent } from "react";
 import Select from "react-select";
 import { LoaderCircle, Plus, RefreshCw, Users } from "lucide-react";
 
-import type { StudentEnrollment, StudentForEnrollment } from "../api/academic-types";
+import type { StudentEnrollment } from "../api/academic-types";
 import { FormField, selectStyles, type Option } from "./academic-ui";
 import { AcademicQueryError } from "./AcademicQueryError";
 

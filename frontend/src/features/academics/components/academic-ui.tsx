@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import Select, { type StylesConfig } from "react-select";
+import { type StylesConfig } from "react-select";
 
 export interface Option {
   value: string;
