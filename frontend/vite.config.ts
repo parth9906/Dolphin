@@ -3,7 +3,7 @@ import { defineConfig, loadEnv } from "vite";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "VITE_");
-  const backendTarget = env.VITE_BACKEND_TARGET?.trim() || "http://localhost:8080";
+  const backendTarget = env.VITE_BACKEND_TARGET?.trim();
 
   return {
     plugins: [react()],

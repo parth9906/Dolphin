@@ -49,6 +49,7 @@ export const userAdministrationService = {
     return apiClient.post<AcceptUserInvitationResponse>(
       "user-invitations/accept",
       request,
+      { auth: "none" },
     );
   },
 
