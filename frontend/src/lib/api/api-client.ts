@@ -24,7 +24,7 @@ const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL?.trim() || '/api/v1'
 ).replace(/\/+$/, '');
 
-const DEFAULT_TIMEOUT_MS = 15_000;
+const DEFAULT_TIMEOUT_MS = 60_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
