@@ -78,6 +78,7 @@ export function UserManagementPage() {
   const directoryRequestId = useRef(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [invitationError, setInvitationError] = useState("");
   const [notice, setNotice] = useState("");
   const [confirmation, setConfirmation] = useState<PendingConfirmation | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -442,16 +443,16 @@ export function UserManagementPage() {
 
   async function createInvitation(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
+    setInvitationError("");
     setNotice("");
 
     if (!canInviteUsers) {
-      setError("Your account does not have permission to invite users.");
+      setInvitationError("Your account does not have permission to invite users.");
       return;
     }
 
     if (!inviteForm.roleId) {
-      setError("Select a role.");
+      setInvitationError("Select a role.");
       return;
     }
 
@@ -460,19 +461,19 @@ export function UserManagementPage() {
     );
     if (isInstitutionAdminInvite) {
       if (!isPlatformAdmin) {
-        setError("Only an authorized platform administrator can initiate this institution-admin workflow.");
+        setInvitationError("Only an authorized platform administrator can initiate this institution-admin workflow.");
         return;
       }
       if (selectedInstitutionIds.length === 0) {
-        setError("Select at least one institution.");
+        setInvitationError("Select at least one institution.");
         return;
       }
       if (selectedInstitutionIds.some((id) => !inviteInstitutions.some((item) => item.id === id && item.active))) {
-        setError("One or more selected institutions are no longer available. Review your selection.");
+        setInvitationError("One or more selected institutions are no longer available. Review your selection.");
         return;
       }
     } else if (!selectedScope) {
-      setError("Select a valid organization scope.");
+      setInvitationError("Select a valid organization scope.");
       return;
     }
 
@@ -511,7 +512,7 @@ export function UserManagementPage() {
       );
       setRefreshKey((value) => value + 1);
     } catch (cause) {
-      setError(errorText(cause));
+      setInvitationError(errorText(cause));
     } finally {
       setSaving(false);
     }
@@ -898,6 +899,8 @@ export function UserManagementPage() {
           saving={saving}
           onSubmit={createInvitation}
           onClose={closeModals}
+          invitationError={invitationError}
+          setInvitationError={setInvitationError}
         />
       )}
 

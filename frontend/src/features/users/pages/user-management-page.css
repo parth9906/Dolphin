@@ -1312,6 +1312,10 @@
   margin: 0;
 }
 
+.mt-4px{
+  margin-top: 4px;
+}
+
 @media (max-width: 720px) {
   .ua-hierarchy-grid,
   .ua-institution-options {

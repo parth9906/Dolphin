@@ -1,7 +1,7 @@
 import type { FormEvent } from "react";
 import Select from "react-select";
 import type { Enterprise, Region, Cluster, Institution } from "../../organization/api/organization-types";
-import { LoaderCircle, Mail, X } from "lucide-react";
+import { AlertCircle, LoaderCircle, Mail, X } from "lucide-react";
 
 import type { InvitationForm, SelectOption } from "./user-management-utils";
 
@@ -33,6 +33,8 @@ type InviteUserDialogProps = {
   saving: boolean;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onClose: () => void;
+  invitationError: string;
+  setInvitationError: (id: string) => void;
 };
 
 export function InviteUserDialog({
@@ -63,6 +65,8 @@ export function InviteUserDialog({
   saving,
   onSubmit,
   onClose,
+  invitationError,
+  setInvitationError,
 }: InviteUserDialogProps) {
   return (
     <div className="ua-modal-backdrop" role="presentation">
@@ -212,6 +216,21 @@ export function InviteUserDialog({
               </div>
             )}
           </div>
+
+          {invitationError && (
+            <div className="ua-alert ua-alert--error mt-4px" role="alert">
+              <AlertCircle size={18} />
+              <span>{invitationError}</span>
+              <button
+                type="button"
+                aria-label="Dismiss error"
+                onClick={() => setInvitationError("")}
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
+
           <footer className="ua-modal-footer">
             <button type="button" className="ua-button ua-button--secondary" onClick={onClose} disabled={saving}>
               Cancel
